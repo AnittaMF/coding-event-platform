@@ -493,19 +493,13 @@ async function loadSubmissions() {
 
 
             <td>
-
-            <button 
-            class="btn-primary"
-            onclick="openScore('${s.username}')">
-
-            Open
-
-            </button>
-
-            </td>
+<button class="btn-primary" onclick="openScore('${encodeURIComponent(s.username)}')">
+Open
+</button>
+</td>`;
 
 
-            `;
+            
 
 
             tb.appendChild(tr);
@@ -533,6 +527,7 @@ async function loadSubmissions() {
 
 }
 function openScore(username) {
+ username = decodeURIComponent(username);
   const s = window._subs.find(x => x.username === username);
   if (!s) return;
   currentScoreSub = s;
