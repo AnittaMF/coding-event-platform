@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Control Panel — Coding & Debugging Event</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Arial, sans-serif; }
+  body { background:#0f172a; color:#e2e8f0; }
+  a { color:#38bdf8; }
+  button { cursor:pointer; border:none; border-radius:6px; font-size:14px; padding:8px 14px; }
+  .btn-primary{ background:#0284c7; color:#fff; } .btn-primary:hover{ background:#0369a1; }
+  .btn-green  { background:#16a34a; color:#fff; } .btn-green:hover{ background:#15803d; }
+  .btn-red    { background:#dc2626; color:#fff; } .btn-red:hover{ background:#b91c1c; }
+  .btn-gray   { background:#334155; color:#e2e8f0; } .btn-gray:hover{ background:#475569; }
+  input, select, textarea { background:#0f172a; color:#e2e8f0; border:1px solid #334155;
+    border-radius:6px; padding:8px 10px; font-size:14px; width:100%; }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:#38bdf8; }
+  textarea { font-family:'Consolas', monospace; resize:vertical; }
+  label { font-size:12px; color:#94a3b8; display:block; margin:10px 0 4px; }
+
+  /* Login */
+  .login-wrap{ display:flex; align-items:center; justify-content:center; min-height:100vh; }
+  .login-card{ background:#1e293b; padding:36px; border-radius:12px; width:340px; }
+  .login-card h1{ color:#38bdf8; font-size:20px; margin-bottom:20px; }
+  .err{ color:#f87171; font-size:13px; margin:8px 0; display:none; }
+
+  /* App shell */
+  #app{ display:none; }
+  header{ background:#1e293b; padding:14px 24px; display:flex; justify-content:space-between;
+    align-items:center; border-bottom:1px solid #334155; }
+  header h1{ font-size:18px; color:#38bdf8; }
+  .status-pill{ padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+  .open{ background:#14532d; color:#bbf7d0; } .closed{ background:#7f1d1d; color:#fecaca; }
+  nav{ display:flex; gap:6px; padding:12px 24px; background:#111827; border-bottom:1px solid #334155; }
+  nav button{ background:transparent; color:#94a3b8; padding:8px 16px; }
+  nav button.active{ background:#0284c7; color:#fff; }
+  main{ padding:24px; max-width:1100px; margin:0 auto; }
+  .tab{ display:none; } .tab.active{ display:block; }
+  .card{ background:#1e293b; border-radius:10px; padding:20px; margin-bottom:18px; }
+  .card h2{ font-size:15px; margin-bottom:14px; color:#e2e8f0; }
+  .row{ display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+  .row > div{ flex:1; min-width:140px; }
+  table{ width:100%; border-collapse:collapse; font-size:14px; }
+  th, td{ text-align:left; padding:10px; border-bottom:1px solid #334155; vertical-align:top; }
+  th{ color:#94a3b8; font-size:12px; text-transform:uppercase; }
+  .tag{ font-size:11px; padding:2px 8px; border-radius:4px; }
+  .tag.coding{ background:#0c4a6e; color:#bae6fd; } .tag.debugging{ background:#78350f; color:#fed7aa; }
+  .muted{ color:#94a3b8; font-size:12px; }
+  .toast{ position:fixed; bottom:20px; right:20px; background:#16a34a; color:#fff; padding:12px 18px;
+    border-radius:8px; display:none; z-index:50; }
+  pre{ background:#020617; padding:10px; border-radius:6px; overflow:auto; font-size:13px;
+    color:#7dd3fc; white-space:pre-wrap; max-height:260px; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .credbox{ background:#020617; border:1px solid #334155; border-radius:6px; padding:12px;
+    font-family:monospace; font-size:13px; max-height:220px; overflow:auto; margin-top:10px; }
+  @media (max-width:720px){ .grid2{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginPage">
+  <div class="login-card">
+    <h1>&#128272; Admin Control Panel</h1>
+    <label>Admin Username</label>
+    <input id="user" placeholder="admin">
+    <label>Admin Password</label>
+    <input id="pass" type="password" placeholder="password">
+    <div class="err" id="err"></div>
+    <button class="btn-primary" style="width:100%; margin-top:16px;" onclick="login()">Login</button>
+    <p class="muted" style="margin-top:14px;">Participants use the <a href="/">main page</a>, not this one.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <h1>&#128200; <span id="evName">Event</span> — Admin</h1>
+    <div>
+      <span class="status-pill closed" id="evStatus">CLOSED</span>
+      <button class="btn-gray" onclick="logout()">Logout</button>
+    </div>
+  </header>
+  <nav>
+    <button class="active" data-tab="questions" onclick="showTab('questions')">Questions</button>
+    <button data-tab="participants" onclick="showTab('participants')">Participants</button>
+    <button data-tab="event" onclick="showTab('event')">Event Control</button>
+    <button data-tab="evaluate" onclick="showTab('evaluate')">Evaluation</button>
+  </nav>
+  <main>
+
+    <!-- QUESTIONS TAB -->
+    <section class="tab active" id="tab-questions">
+      <div class="card">
+        <h2 id="qFormTitle">Add a Question</h2>
+        <input type="hidden" id="qId">
+        <div class="row">
+          <div style="max-width:180px">
+            <label>Type</label>
+            <select id="qType" onchange="onTypeChange()">
+              <option value="coding">Coding</option>
+              <option value="debugging">Debugging (fix buggy code)</option>
+            </select>
+          </div>
+          <div><label>Title</label><input id="qTitle" placeholder="e.g. Palindrome Number"></div>
+          <div style="max-width:120px"><label>Marks</label><input id="qMarks" type="number" value="10"></div>
+          <div style="max-width:140px"><label>Language</label><input id="qLang" placeholder="Any / Python / C"></div>
+        </div>
+        <label>Question / Problem statement</label>
+        <textarea id="qDesc" rows="4" placeholder="Describe the problem, with examples..."></textarea>
+        <div id="starterWrap" style="display:none">
+          <label>Buggy starter code (participant fixes this)</label>
+          <textarea id="qStarter" rows="6" placeholder="Paste the code that contains the bug..."></textarea>
+        </div>
+        <div style="margin-top:14px; display:flex; gap:8px;">
+          <button class="btn-green" onclick="saveQuestion()">Save Question</button>
+          <button class="btn-gray" onclick="resetQForm()" id="qCancel" style="display:none">Cancel edit</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Current Questions (<span id="qCount">0</span>) — recommended: 5</h2>
+        <table>
+          <thead><tr><th>#</th><th>Type</th><th>Title</th><th>Marks</th><th>Lang</th><th>Actions</th></tr></thead>
+          <tbody id="qTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- PARTICIPANTS TAB -->
+    <section class="tab" id="tab-participants">
+      <div class="grid2">
+        <div class="card">
+          <h2>Add One Participant</h2>
+          <label>Username</label><input id="pUser" placeholder="participant1">
+          <label>Password</label><input id="pPass" placeholder="choose a password">
+          <button class="btn-green" style="margin-top:14px" onclick="addParticipant()">Add</button>
+        </div>
+        <div class="card">
+          <h2>Bulk Generate Accounts</h2>
+          <div class="row">
+            <div><label>How many</label><input id="bCount" type="number" value="10"></div>
+            <div><label>Username prefix</label><input id="bPrefix" value="user"></div>
+          </div>
+          <button class="btn-primary" style="margin-top:14px" onclick="bulkGenerate()">Generate</button>
+          <p class="muted" style="margin-top:8px">Passwords are shown once below — copy them now.</p>
+        </div>
+      </div>
+      <div class="card" id="credCard" style="display:none">
+        <h2>New Credentials (copy these — shown once)</h2>
+        <div class="credbox" id="credBox"></div>
+        <button class="btn-gray" style="margin-top:10px" onclick="copyCreds()">Copy all</button>
+      </div>
+      <div class="card">
+        <h2>Participants (<span id="pCount">0</span>)</h2>
+        <table>
+          <thead><tr><th>Username</th><th>Created</th><th>Action</th></tr></thead>
+          <tbody id="pTable"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- EVENT CONTROL TAB -->
+    <section class="tab" id="tab-event">
+      <div class="card">
+        <h2>Event Settings</h2>
+        <div class="row">
+          <div><label>Event name</label><input id="cName"></div>
+          <div style="max-width:160px"><label>Duration (minutes)</label><input id="cDuration" type="number"></div>
+          <div style="max-width:160px"><label>Max tab-switches</label><input id="cViol" type="number"></div>
+        </div>
+        <button class="btn-green" style="margin-top:14px" onclick="saveConfig()">Save Settings</button>
+      </div>
+      <div class="card">
+        <h2>Start / Stop Event</h2>
+        <p class="muted" style="margin-bottom:14px">
+          Participants can only log in while the event is <b>OPEN</b>. Keep it CLOSED until you're ready.
+        </p>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn-green" onclick="setEvent('start')">&#9654; Start Event</button>
+          <button class="btn-red" onclick="setEvent('stop')">&#9632; Stop Event</button>
+          <span class="status-pill closed" id="evStatus2">CLOSED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- EVALUATION TAB -->
+    <section class="tab" id="tab-evaluate">
+      <div class="card">
+        <h2>Submissions & Scoring
+          <a href="/api/admin/export.csv" id="csvLink" style="float:right; font-size:13px">&#11015; Export CSV</a>
+        </h2>
+        <table>
+          <thead><tr><th>Participant</th><th>Answered</th><th>Violations</th><th>Auto?</th><th>Total</th><th></th></tr></thead>
+          <tbody id="sTable"></tbody>
+        </table>
+        <p class="muted" id="noSubs" style="display:none">No submissions yet.</p>
+      </div>
+      <div class="card" id="scoreCard" style="display:none">
+        <h2>Scoring: <span id="scoreUser"></span></h2>
+        <div id="scoreBody"></div>
+        <label>Overall remarks</label>
+        <textarea id="scoreRemarks" rows="2"></textarea>
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <button class="btn-green" onclick="saveScores()">Save Scores</button>
+          <span id="scoreTotal" class="muted"></span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let token = null;
+let questionsCache = [];
+let currentScoreSub = null;
+
+/* ---------- API helper ---------- */
+async function api(method, url, body) {
+  const opts = { method, headers: { Authorization: "Bearer " + token } };
+  if (body !== undefined) { opts.headers["Content-Type"] = "application/json"; opts.body = JSON.stringify(body); }
+  const r = await fetch(url, opts);
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.error || "Request failed");
+  return data;
+}
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2200);
+}
+
+/* ---------- Login ---------- */
+async function login() {
+  const err = document.getElementById("err");
+  err.style.display = "none";
+  try {
+    const data = await api("POST", "/api/login", {
+      username: document.getElementById("user").value.trim(),
+      password: document.getElementById("pass").value
+    });
+    if (data.role !== "admin") throw new Error("Not an admin account");
+    token = data.token;
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    await refreshAll();
+  } catch (e) { err.textContent = e.message; err.style.display = "block"; }
+}
+function logout() { token = null; location.reload(); }
+document.getElementById("pass").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+/* ---------- Tabs ---------- */
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  document.querySelectorAll("nav button").forEach(b =>
+    b.classList.toggle("active", b.dataset.tab === name));
+  if (name === "evaluate") loadSubmissions();
+}
+
+async function refreshAll() {
+  await Promise.all([loadConfig(), loadQuestions(), loadParticipants()]);
+}
+
+/* ---------- Config / event ---------- */
+async function loadConfig() {
+  const c = await api("GET", "/api/admin/config");
+  document.getElementById("evName").textContent = c.eventName;
+  document.getElementById("cName").value = c.eventName;
+  document.getElementById("cDuration").value = c.durationMinutes;
+  document.getElementById("cViol").value = c.maxViolations;
+  const open = c.eventOpen;
+  ["evStatus", "evStatus2"].forEach(id => {
+    const el = document.getElementById(id);
+    el.textContent = open ? "OPEN" : "CLOSED";
+    el.className = "status-pill " + (open ? "open" : "closed");
+  });
+}
+async function saveConfig() {
+  await api("PUT", "/api/admin/config", {
+    eventName: document.getElementById("cName").value,
+    durationMinutes: document.getElementById("cDuration").value,
+    maxViolations: document.getElementById("cViol").value
+  });
+  await loadConfig(); toast("Settings saved");
+}
+async function setEvent(action) {
+  await api("POST", "/api/admin/event/" + action);
+  await loadConfig();
+  toast(action === "start" ? "Event STARTED — participants can log in" : "Event STOPPED");
+}
+
+/* ---------- Questions ---------- */
+function onTypeChange() {
+  document.getElementById("starterWrap").style.display =
+    document.getElementById("qType").value === "debugging" ? "block" : "none";
+}
+async function loadQuestions() {
+  const { questions } = await api("GET", "/api/admin/questions");
+  questionsCache = questions;
+  document.getElementById("qCount").textContent = questions.length;
+  const tb = document.getElementById("qTable");
+  tb.innerHTML = "";
+  questions.forEach((q, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${i + 1}</td>
+       <td><span class="tag ${q.type}">${q.type}</span></td>
+       <td>${escapeHtml(q.title)}</td>
+       <td>${q.marks}</td>
+       <td>${escapeHtml(q.language)}</td>
+       <td>
+         <button class="btn-gray" onclick="editQuestion('${q.id}')">Edit</button>
+         <button class="btn-red" onclick="deleteQuestion('${q.id}')">Delete</button>
+       </td>`;
+    tb.appendChild(tr);
+  });
+}
+async function saveQuestion() {
+  const id = document.getElementById("qId").value;
+  const payload = {
+    type: document.getElementById("qType").value,
+    title: document.getElementById("qTitle").value.trim(),
+    marks: document.getElementById("qMarks").value,
+    language: document.getElementById("qLang").value.trim(),
+    description: document.getElementById("qDesc").value,
+    starterCode: document.getElementById("qStarter").value
+  };
+  if (!payload.title || !payload.description) { toast("Title and description required"); return; }
+  try {
+    if (id) await api("PUT", "/api/admin/questions/" + id, payload);
+    else    await api("POST", "/api/admin/questions", payload);
+    resetQForm(); await loadQuestions(); toast("Question saved");
+  } catch (e) { toast(e.message); }
+}
+function editQuestion(id) {
+  const q = questionsCache.find(x => x.id === id);
+  if (!q) return;
+  document.getElementById("qId").value = q.id;
+  document.getElementById("qType").value = q.type;
+  document.getElementById("qTitle").value = q.title;
+  document.getElementById("qMarks").value = q.marks;
+  document.getElementById("qLang").value = q.language;
+  document.getElementById("qDesc").value = q.description;
+  document.getElementById("qStarter").value = q.starterCode || "";
+  onTypeChange();
+  document.getElementById("qFormTitle").textContent = "Edit Question";
+  document.getElementById("qCancel").style.display = "inline-block";
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function resetQForm() {
+  ["qId","qTitle","qLang","qDesc","qStarter"].forEach(i => document.getElementById(i).value = "");
+  document.getElementById("qType").value = "coding";
+  document.getElementById("qMarks").value = "10";
+  onTypeChange();
+  document.getElementById("qFormTitle").textContent = "Add a Question";
+  document.getElementById("qCancel").style.display = "none";
+}
+async function deleteQuestion(id) {
+  if (!confirm("Delete this question?")) return;
+  await api("DELETE", "/api/admin/questions/" + id);
+  await loadQuestions(); toast("Deleted");
+}
+
+/* ---------- Participants ---------- */
+async function loadParticipants() {
+  const { participants } = await api("GET", "/api/admin/participants");
+  document.getElementById("pCount").textContent = participants.length;
+  const tb = document.getElementById("pTable");
+  tb.innerHTML = "";
+  participants.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(p.username)}</td>
+      <td class="muted">${p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</td>
+      <td><button class="btn-red" onclick="delParticipant('${encodeURIComponent(p.username)}')">Remove</button></td>`;
+    tb.appendChild(tr);
+  });
+}
+async function addParticipant() {
+  const username = document.getElementById("pUser").value.trim();
+  const password = document.getElementById("pPass").value;
+  if (!username || !password) { toast("Username and password required"); return; }
+  try {
+    await api("POST", "/api/admin/participants", { username, password });
+    document.getElementById("pUser").value = ""; document.getElementById("pPass").value = "";
+    showCreds([{ username, password }]);
+    await loadParticipants(); toast("Participant added");
+  } catch (e) { toast(e.message); }
+}
+async function bulkGenerate() {
+  const count = document.getElementById("bCount").value;
+  const prefix = document.getElementById("bPrefix").value;
+  try {
+    const { created } = await api("POST", "/api/admin/participants/bulk", { count, prefix });
+    showCreds(created);
+    await loadParticipants(); toast(created.length + " accounts created");
+  } catch (e) { toast(e.message); }
+}
+function showCreds(list) {
+  const box = document.getElementById("credBox");
+  box.textContent = list.map(c => c.username + "  /  " + c.password).join("\n");
+  document.getElementById("credCard").style.display = "block";
+}
+function copyCreds() {
+  navigator.clipboard.writeText(document.getElementById("credBox").textContent);
+  toast("Copied to clipboard");
+}
+async function delParticipant(u) {
+  if (!confirm("Remove this participant?")) return;
+  await api("DELETE", "/api/admin/participants/" + u);
+  await loadParticipants(); toast("Removed");
+}
+
+/* ---------- Evaluation ---------- */
+async function loadSubmissions() {
+  const { submissions, questions } = await api("GET", "/api/admin/submissions");
+  questionsCache = questions;
+  const tb = document.getElementById("sTable");
+  tb.innerHTML = "";
+  document.getElementById("noSubs").style.display = submissions.length ? "none" : "block";
+  submissions.forEach(s => {
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      `<td>${escapeHtml(s.username)}</td>
+       <td>${s.answeredCount}/${questions.length}</td>
+       <td>${s.violations}</td>
+       <td>${s.autoSubmitted ? "yes" : "no"}</td>
+       <td>${s.totalScore != null ? s.totalScore + "/" + s.maxScore : "<span class='muted'>unscored</span>"}</td>
+       <td><button class="btn-primary" onclick='openScore(${JSON.stringify(s.username)})'>Open</button></td>`;
+    tb.appendChild(tr);
+  });
+  window._subs = submissions;
+}
+function openScore(username) {
+  const s = window._subs.find(x => x.username === username);
+  if (!s) return;
+  currentScoreSub = s;
+  document.getElementById("scoreUser").textContent = username;
+  document.getElementById("scoreRemarks").value = s.remarks || "";
+  const body = document.getElementById("scoreBody");
+  body.innerHTML = "";
+  questionsCache.forEach((q, i) => {
+    const ans = (s.answers.find(a => a.id === q.id)) || { answer: "", status: "notvisited" };
+    const awarded = (s.scores && s.scores[q.id] != null) ? s.scores[q.id] : "";
+    const div = document.createElement("div");
+    div.style.marginBottom = "16px";
+    div.innerHTML =
+      `<div style="display:flex; justify-content:space-between; align-items:center;">
+         <b>Q${i + 1}. ${escapeHtml(q.title)}</b>
+         <span class="tag ${q.type}">${q.type}</span>
+       </div>
+       <div class="muted" style="margin:4px 0">Status: ${ans.status} &nbsp;|&nbsp; Max marks: ${q.marks}</div>
+       <pre>${escapeHtml(ans.answer || "(no answer)")}</pre>
+       <label>Marks awarded (0–${q.marks})</label>
+       <input type="number" min="0" max="${q.marks}" value="${awarded}"
+              data-qid="${q.id}" class="scoreInput" style="max-width:160px" oninput="recalcTotal()">`;
+    body.appendChild(div);
+  });
+  document.getElementById("scoreCard").style.display = "block";
+  recalcTotal();
+  document.getElementById("scoreCard").scrollIntoView({ behavior: "smooth" });
+}
+function recalcTotal() {
+  let total = 0, max = 0;
+  document.querySelectorAll(".scoreInput").forEach(inp => {
+    total += Number(inp.value) || 0;
+    const q = questionsCache.find(x => x.id === inp.dataset.qid);
+    max += q ? Number(q.marks) : 0;
+  });
+  document.getElementById("scoreTotal").textContent = "Total: " + total + " / " + max;
+}
+async function saveScores() {
+  const scores = {};
+  document.querySelectorAll(".scoreInput").forEach(inp => {
+    if (inp.value !== "") scores[inp.dataset.qid] = Number(inp.value) || 0;
+  });
+  await api("POST", "/api/admin/score/" + encodeURIComponent(currentScoreSub.username), {
+    scores, remarks: document.getElementById("scoreRemarks").value
+  });
+  toast("Scores saved");
+  await loadSubmissions();
+}
+
+/* ---------- util ---------- */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+</script>
+</body>
+</html>

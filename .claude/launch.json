@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "exam-platform",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["server.js"],
+      "cwd": "D:\\code\\coding-exam-platform",
+      "port": 3000
+    }
+  ]
+}

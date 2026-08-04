@@ -1,0 +1,11 @@
+[
+  {
+    "id": "b6fcae35619a",
+    "type": "coding",
+    "title": "Palindrome Number",
+    "marks": 10,
+    "language": "Any",
+    "description": "Write a program to check whether a given number is a PALINDROME.\n\nExample:\nInput: 121 -> Output: Palindrome\nInput: 123 -> Output: Not Palindrome",
+    "starterCode": ""
+  }
+]

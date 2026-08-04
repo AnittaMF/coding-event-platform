@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coding Exam Platform</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+  body { background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+  .login-wrap { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card { background: #1e293b; padding: 40px; border-radius: 12px; width: 360px; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+  .login-card h1 { font-size: 22px; margin-bottom: 6px; color: #38bdf8; }
+  .login-card p  { font-size: 13px; color: #94a3b8; margin-bottom: 24px; }
+  .login-card label { display: block; font-size: 13px; margin-bottom: 6px; color: #cbd5e1; }
+  .login-card input { width: 100%; padding: 10px 12px; margin-bottom: 16px; border-radius: 6px;
+                      border: 1px solid #334155; background: #0f172a; color: #e2e8f0; font-size: 14px; }
+  .login-card input:focus { outline: none; border-color: #38bdf8; }
+  .err { color: #f87171; font-size: 13px; margin-bottom: 12px; display: none; }
+
+  button { cursor: pointer; border: none; border-radius: 6px; font-size: 14px; }
+  .btn-primary { background: #0284c7; color: #fff; padding: 10px 20px; width: 100%; }
+  .btn-primary:hover { background: #0369a1; }
+  .btn-primary:disabled { background: #475569; cursor: wait; }
+
+  .exam { display: none; }
+  .topbar { display: flex; justify-content: space-between; align-items: center;
+            background: #1e293b; padding: 12px 20px; border-bottom: 1px solid #334155; }
+  .topbar .brand { color: #38bdf8; font-weight: 600; }
+  .topbar .meta { font-size: 13px; color: #94a3b8; }
+  .topbar .warn-count { color: #fbbf24; font-weight: 600; }
+  #timer { font-weight: 600; color: #4ade80; }
+
+  .layout { display: flex; height: calc(100vh - 53px); }
+  .sidebar { width: 220px; background: #1e293b; padding: 16px; border-right: 1px solid #334155; overflow-y: auto; }
+  .sidebar h3 { font-size: 13px; color: #94a3b8; margin-bottom: 12px; text-transform: uppercase; }
+  .palette { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; }
+  .qbtn { padding: 10px 0; text-align: center; border-radius: 6px; background: #334155; color: #e2e8f0; font-size: 14px; }
+  .qbtn.current  { outline: 2px solid #38bdf8; }
+  .qbtn.answered { background: #16a34a; }
+  .qbtn.skipped  { background: #d97706; }
+  .legend { font-size: 12px; color: #94a3b8; line-height: 1.9; }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; }
+
+  .main { flex: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+  .qhead { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .qhead .qnum { font-size: 16px; font-weight: 600; color: #38bdf8; }
+  .qhead .qmarks { font-size: 13px; color: #94a3b8; }
+  .qtext { background: #1e293b; border-radius: 8px; padding: 16px; font-size: 15px; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+  .editor-label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+  #answer { flex: 1; min-height: 260px; background: #020617; color: #7dd3fc; border: 1px solid #334155;
+            border-radius: 8px; padding: 14px; font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px; line-height: 1.5; resize: vertical; tab-size: 4; }
+  #answer:focus { outline: none; border-color: #38bdf8; }
+
+  .navbtns { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-nav    { background: #334155; color: #e2e8f0; padding: 10px 22px; }
+  .btn-nav:hover { background: #475569; }
+  .btn-skip   { background: #d97706; color: #fff; padding: 10px 22px; }
+  .btn-skip:hover { background: #b45309; }
+  .btn-save   { background: #16a34a; color: #fff; padding: 10px 22px; }
+  .btn-save:hover { background: #15803d; }
+  .btn-submit { background: #dc2626; color: #fff; padding: 10px 22px; margin-left: auto; }
+  .btn-submit:hover { background: #b91c1c; }
+
+  .result-wrap { display: none; padding: 40px; max-width: 760px; margin: 0 auto; }
+  .result-wrap h1 { color: #38bdf8; margin-bottom: 20px; }
+  .summary-box { background: #1e293b; border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .summary-box h2 { font-size: 16px; margin-bottom: 14px; }
+  .summary-box h2.ok   { color: #4ade80; }
+  .summary-box h2.miss { color: #fbbf24; }
+  .summary-box ul { list-style: none; }
+  .summary-box li { padding: 10px 12px; border-bottom: 1px solid #334155; font-size: 14px; }
+  .summary-box li:last-child { border-bottom: none; }
+  .summary-box li .go { float: right; background: #0284c7; color: #fff; padding: 4px 14px; border-radius: 4px; font-size: 12px; }
+  .stat-row { display: flex; gap: 16px; margin-bottom: 20px; }
+  .stat { flex: 1; background: #1e293b; border-radius: 10px; padding: 18px; text-align: center; }
+  .stat .num { font-size: 30px; font-weight: 700; }
+  .stat .lbl { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+  .final-msg { background: #14532d; color: #bbf7d0; padding: 16px; border-radius: 8px; display: none; margin-top: 10px; }
+
+  .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 99;
+             align-items: center; justify-content: center; }
+  .overlay-card { background: #7f1d1d; padding: 36px; border-radius: 12px; text-align: center; max-width: 420px; }
+  .overlay-card h2 { color: #fecaca; margin-bottom: 10px; }
+  .overlay-card p  { color: #fca5a5; font-size: 14px; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginPage">
+  <div class="login-card">
+    <h1>&lt;/&gt; Coding Exam Platform</h1>
+    <p>Login to start your test</p>
+    <div class="err" id="loginErr"></div>
+    <label>Username</label>
+    <input type="text" id="username" placeholder="Enter username" autocomplete="off">
+    <label>Password</label>
+    <input type="password" id="password" placeholder="Enter password">
+    <button class="btn-primary" id="loginBtn" onclick="login()">Login &amp; Start Exam</button>
+  </div>
+</div>
+
+<!-- EXAM -->
+<div class="exam" id="examPage">
+  <div class="topbar">
+    <span class="brand">&lt;/&gt; Coding Exam</span>
+    <span class="meta">User: <b id="userDisplay"></b></span>
+    <span class="meta">Tab switches: <span class="warn-count" id="warnCount">0</span> / <span id="maxWarn">3</span></span>
+    <span class="meta">Time left: <span id="timer">--:--</span></span>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <h3>Questions</h3>
+      <div class="palette" id="palette"></div>
+      <div class="legend">
+        <span class="dot" style="background:#16a34a"></span>Answered<br>
+        <span class="dot" style="background:#d97706"></span>Skipped<br>
+        <span class="dot" style="background:#334155"></span>Not visited<br>
+      </div>
+    </div>
+    <div class="main">
+      <div class="qhead">
+        <span class="qnum" id="qNum"></span>
+        <span class="qmarks" id="qMarks"></span>
+      </div>
+      <div class="qtext" id="qText"></div>
+      <div class="editor-label" id="editorLabel">Type your code / answer below:</div>
+      <textarea id="answer" spellcheck="false" placeholder="// Write your code here..."></textarea>
+      <div class="navbtns">
+        <button class="btn-nav"  onclick="prevQ()">&#8592; Previous</button>
+        <button class="btn-save" onclick="saveAndNext()">Save &amp; Next</button>
+        <button class="btn-skip" onclick="skipQ()">Skip (Don't know) &#8594;</button>
+        <button class="btn-submit" onclick="submitExam(false)">Submit Exam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div class="result-wrap" id="resultPage">
+  <h1>Exam Summary</h1>
+  <div class="stat-row">
+    <div class="stat"><div class="num" style="color:#4ade80" id="statAnswered">0</div><div class="lbl">Answered</div></div>
+    <div class="stat"><div class="num" style="color:#fbbf24" id="statUnattended">0</div><div class="lbl">Not Attended</div></div>
+    <div class="stat"><div class="num" style="color:#38bdf8" id="statTotal">0</div><div class="lbl">Total Questions</div></div>
+  </div>
+  <div class="summary-box">
+    <h2 class="miss">&#9888; Not Attended Questions</h2>
+    <ul id="unattendedList"></ul>
+  </div>
+  <div class="summary-box">
+    <h2 class="ok">&#10004; Answered Questions</h2>
+    <ul id="answeredList"></ul>
+  </div>
+  <button class="btn-primary" id="finalSubmitBtn" onclick="finalSubmit()">Final Submit</button>
+  <div class="final-msg" id="finalMsg"></div>
+</div>
+
+<!-- TAB SWITCH OVERLAY -->
+<div class="overlay" id="tabOverlay">
+  <div class="overlay-card">
+    <h2>&#9888; Warning: Tab Switch Detected!</h2>
+    <p id="overlayMsg"></p>
+    <button class="btn-primary" onclick="closeOverlay()">I Understand — Continue Exam</button>
+  </div>
+</div>
+
+<script>
+/* ---------------- State ---------------- */
+let state = {
+  token: null, user: null,
+  questions: [], starter: [],
+  current: 0, answers: [], status: [],
+  violations: 0, maxViolations: 3,
+  examOver: false, secondsLeft: 0, timerId: null
+};
+
+const API = {
+  async post(url, body) {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json",
+                 ...(state.token ? { Authorization: "Bearer " + state.token } : {}) },
+      body: JSON.stringify(body || {})
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "Request failed");
+    return data;
+  },
+  async get(url) {
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + state.token } });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || "Request failed");
+    return data;
+  }
+};
+
+/* ---------------- Login ---------------- */
+async function login() {
+  const btn = document.getElementById("loginBtn");
+  const errEl = document.getElementById("loginErr");
+  errEl.style.display = "none";
+  btn.disabled = true;
+  try {
+    const u = document.getElementById("username").value.trim();
+    const p = document.getElementById("password").value;
+    const data = await API.post("/api/login", { username: u, password: p });
+
+    state.token = data.token;
+    state.user = data.username;
+    state.maxViolations = data.maxViolations;
+    state.secondsLeft = data.durationMinutes * 60;
+
+    const qs = await API.get("/api/questions");
+    state.questions = qs.questions;
+    // For debugging questions, preload the buggy starter code so the participant fixes it.
+    state.starter = state.questions.map(q => q.starterCode || "");
+    state.answers = state.questions.map(q => q.type === "debugging" ? (q.starterCode || "") : "");
+    state.status  = state.questions.map(() => "notvisited");
+
+    document.getElementById("loginPage").style.display = "none";
+    document.getElementById("examPage").style.display  = "block";
+    document.getElementById("userDisplay").textContent = state.user;
+    document.getElementById("maxWarn").textContent = state.maxViolations;
+
+    buildPalette();
+    loadQuestion(0);
+    startTimer();
+    enableAntiCheat();
+  } catch (e) {
+    errEl.textContent = e.message;
+    errEl.style.display = "block";
+  } finally {
+    btn.disabled = false;
+  }
+}
+document.getElementById("password").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+/* ---------------- Question display & navigation ---------------- */
+function buildPalette() {
+  const pal = document.getElementById("palette");
+  pal.innerHTML = "";
+  state.questions.forEach((_, i) => {
+    const b = document.createElement("button");
+    b.className = "qbtn";
+    b.id = "qbtn" + i;
+    b.textContent = i + 1;
+    b.onclick = () => { saveCurrentAnswer(); loadQuestion(i); };
+    pal.appendChild(b);
+  });
+}
+
+function loadQuestion(i) {
+  state.current = i;
+  const q = state.questions[i];
+  const typeLabel = q.type === "debugging" ? "🐞 DEBUGGING" : "💻 CODING";
+  document.getElementById("qNum").textContent   = "Question " + (i + 1) + " of " + state.questions.length;
+  document.getElementById("qMarks").textContent = typeLabel + "  |  " + q.language + "  |  Marks: " + q.marks;
+  document.getElementById("qText").textContent  =
+    q.title + "\n\n" + q.description +
+    (q.type === "debugging" ? "\n\n▶ The buggy code is preloaded in the editor below — fix it." : "");
+  document.getElementById("answer").value       = state.answers[i];
+  document.getElementById("editorLabel").textContent =
+    q.type === "debugging" ? "Fix the buggy code below:" : "Type your code / answer below:";
+  refreshPalette();
+}
+
+function refreshPalette() {
+  state.questions.forEach((_, i) => {
+    const b = document.getElementById("qbtn" + i);
+    b.className = "qbtn";
+    if (state.status[i] === "answered") b.classList.add("answered");
+    if (state.status[i] === "skipped")  b.classList.add("skipped");
+    if (i === state.current)            b.classList.add("current");
+  });
+}
+
+// A question counts as "answered" only if there's real work: non-empty for coding,
+// or changed from the preloaded buggy code for debugging.
+function hasRealAnswer(i, val) {
+  if (val.trim() === "") return false;
+  if (state.questions[i].type === "debugging") return val.trim() !== state.starter[i].trim();
+  return true;
+}
+
+function saveCurrentAnswer() {
+  const val = document.getElementById("answer").value;
+  const i = state.current;
+  state.answers[i] = val;
+  if (hasRealAnswer(i, val)) state.status[i] = "answered";
+  else if (state.status[i] === "answered") state.status[i] = "notvisited";
+}
+
+function saveAndNext() { saveCurrentAnswer(); goNext(); }
+
+function skipQ() {
+  const i = state.current;
+  state.answers[i] = document.getElementById("answer").value;
+  if (!hasRealAnswer(i, state.answers[i])) state.status[i] = "skipped";
+  goNext();
+}
+
+function goNext() { loadQuestion((state.current + 1) % state.questions.length); }
+function prevQ()  { saveCurrentAnswer(); loadQuestion((state.current - 1 + state.questions.length) % state.questions.length); }
+
+/* ---------------- Anti-cheat ---------------- */
+function enableAntiCheat() {
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && !state.examOver) registerViolation();
+  });
+  window.addEventListener("blur", () => {
+    if (!state.examOver && document.getElementById("examPage").style.display === "block") registerViolation();
+  });
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  document.addEventListener("copy",  e => { if (!state.examOver) e.preventDefault(); });
+  document.addEventListener("paste", e => { if (!state.examOver) e.preventDefault(); });
+  document.addEventListener("keydown", e => {
+    if (state.examOver) return;
+    if (e.key === "F12") e.preventDefault();
+    if (e.ctrlKey && ["c","v","u","t","n","w"].includes(e.key.toLowerCase())) e.preventDefault();
+  });
+  window.addEventListener("beforeunload", e => {
+    if (!state.examOver) { e.preventDefault(); e.returnValue = ""; }
+  });
+}
+
+let violationLock = false;
+async function registerViolation() {
+  if (violationLock) return;
+  violationLock = true;
+  setTimeout(() => violationLock = false, 1500);
+
+  try {
+    // Server keeps the official count so refreshing the page can't reset it
+    const data = await API.post("/api/violation");
+    state.violations = data.violations;
+    document.getElementById("warnCount").textContent = state.violations;
+    if (data.autoSubmit) {
+      alert("Too many tab switches! Your exam is being auto-submitted.");
+      submitExam(true);
+      return;
+    }
+  } catch (_) {
+    state.violations++;
+    document.getElementById("warnCount").textContent = state.violations;
+  }
+  document.getElementById("overlayMsg").textContent =
+    "Violation " + state.violations + " of " + state.maxViolations +
+    ". Do not switch tabs or open other apps. On violation " + state.maxViolations +
+    " your exam will be auto-submitted.";
+  document.getElementById("tabOverlay").style.display = "flex";
+}
+function closeOverlay() { document.getElementById("tabOverlay").style.display = "none"; }
+
+/* ---------------- Timer ---------------- */
+function startTimer() {
+  renderTime();
+  state.timerId = setInterval(() => {
+    state.secondsLeft--;
+    renderTime();
+    if (state.secondsLeft <= 0) {
+      alert("Time is up! Your exam is being submitted.");
+      submitExam(true);
+    }
+  }, 1000);
+}
+function renderTime() {
+  const m = String(Math.floor(state.secondsLeft / 60)).padStart(2, "0");
+  const s = String(state.secondsLeft % 60).padStart(2, "0");
+  const t = document.getElementById("timer");
+  t.textContent = m + ":" + s;
+  if (state.secondsLeft <= 300) t.style.color = "#f87171";
+}
+function clearTimerSafe() { if (state.timerId) { clearInterval(state.timerId); state.timerId = null; } }
+
+/* ---------------- Submit & summary ---------------- */
+function submitExam(auto) {
+  saveCurrentAnswer();
+  const unattendedCount = state.status.filter(st => st !== "answered").length;
+  if (!auto && unattendedCount > 0) {
+    const ok = confirm(unattendedCount + " question(s) are not attended. Submit anyway?\nPress Cancel to review them first.");
+    if (!ok) { showSummary(); return; }
+  }
+  showSummary();
+  if (auto) finalSubmit(true);
+}
+
+function showSummary() {
+  clearTimerSafe();
+  document.getElementById("examPage").style.display   = "none";
+  document.getElementById("resultPage").style.display = "block";
+
+  const answered = [], unattended = [];
+  state.status.forEach((st, i) => (st === "answered" ? answered : unattended).push(i));
+
+  document.getElementById("statAnswered").textContent   = answered.length;
+  document.getElementById("statUnattended").textContent = unattended.length;
+  document.getElementById("statTotal").textContent      = state.questions.length;
+
+  const uList = document.getElementById("unattendedList");
+  uList.innerHTML = unattended.length === 0 ? "<li>None — all questions attended. Great job! &#127881;</li>" : "";
+  unattended.forEach(i => {
+    const li = document.createElement("li");
+    li.textContent = "Question " + (i + 1) + " — " + state.questions[i].title;
+    if (!state.examOver) {
+      const go = document.createElement("button");
+      go.className = "go";
+      go.textContent = "Attend now";
+      go.onclick = () => backToQuestion(i);
+      li.appendChild(go);
+    }
+    uList.appendChild(li);
+  });
+
+  const aList = document.getElementById("answeredList");
+  aList.innerHTML = answered.length === 0 ? "<li>No questions answered.</li>" : "";
+  answered.forEach(i => {
+    const li = document.createElement("li");
+    li.textContent = "Question " + (i + 1) + " ✔";
+    aList.appendChild(li);
+  });
+}
+
+function backToQuestion(i) {
+  if (state.examOver) return;
+  document.getElementById("resultPage").style.display = "none";
+  document.getElementById("examPage").style.display   = "block";
+  loadQuestion(i);
+  startTimer();
+}
+
+async function finalSubmit(auto) {
+  if (state.examOver) return;
+  state.examOver = true;
+  clearTimerSafe();
+
+  const payload = {
+    autoSubmitted: !!auto,
+    answers: state.questions.map((q, i) => ({ id: q.id, answer: state.answers[i], status: state.status[i] }))
+  };
+  const msgEl = document.getElementById("finalMsg");
+  try {
+    const res = await API.post("/api/submit", payload);
+    msgEl.textContent = "✔ Submitted successfully! Attended " + res.attended + " of " + res.total +
+                        " questions (" + res.notAttended + " not attended). You can close this window.";
+  } catch (e) {
+    msgEl.textContent = "⚠ Could not reach server: " + e.message + ". Your answers are shown above — contact your instructor.";
+  }
+  document.getElementById("finalSubmitBtn").style.display = "none";
+  msgEl.style.display = "block";
+  document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
+}
+</script>
+</body>
+</html>
