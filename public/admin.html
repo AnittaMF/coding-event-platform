@@ -423,23 +423,114 @@ async function delParticipant(u) {
 
 /* ---------- Evaluation ---------- */
 async function loadSubmissions() {
-  const { submissions, questions } = await api("GET", "/api/admin/submissions");
-  questionsCache = questions;
-  const tb = document.getElementById("sTable");
-  tb.innerHTML = "";
-  document.getElementById("noSubs").style.display = submissions.length ? "none" : "block";
-  submissions.forEach(s => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      `<td>${escapeHtml(s.username)}</td>
-       <td>${s.answeredCount}/${questions.length}</td>
-       <td>${s.violations}</td>
-       <td>${s.autoSubmitted ? "yes" : "no"}</td>
-       <td>${s.totalScore != null ? s.totalScore + "/" + s.maxScore : "<span class='muted'>unscored</span>"}</td>
-       <td><button class="btn-primary" onclick='openScore(${JSON.stringify(s.username)})'>Open</button></td>`;
-    tb.appendChild(tr);
-  });
-  window._subs = submissions;
+
+    try {
+
+        const data = await api(
+            "GET",
+            "/api/admin/submissions"
+        );
+
+
+        const submissions = data.submissions || [];
+        const questions = data.questions || [];
+
+
+        questionsCache = questions;
+
+
+        const tb = document.getElementById("sTable");
+
+        tb.innerHTML = "";
+
+
+        if(submissions.length === 0){
+
+            document.getElementById("noSubs").style.display="block";
+
+            return;
+
+        }
+
+
+        document.getElementById("noSubs").style.display="none";
+
+
+        submissions.forEach(s=>{
+
+
+            const tr=document.createElement("tr");
+
+
+            tr.innerHTML=`
+
+            <td>${escapeHtml(s.username)}</td>
+
+            <td>
+            ${s.answeredCount || 0}/${questions.length}
+            </td>
+
+
+            <td>
+            ${s.violations || 0}
+            </td>
+
+
+            <td>
+            ${s.autoSubmitted ? "YES":"NO"}
+            </td>
+
+
+            <td>
+            ${
+            s.totalScore!==null
+            ?
+            s.totalScore+"/"+s.maxScore
+            :
+            "Not evaluated"
+            }
+            </td>
+
+
+            <td>
+
+            <button 
+            class="btn-primary"
+            onclick="openScore('${s.username}')">
+
+            Open
+
+            </button>
+
+            </td>
+
+
+            `;
+
+
+            tb.appendChild(tr);
+
+
+        });
+
+
+        window._subs=submissions;
+
+
+
+    }
+
+    catch(error){
+
+        console.error(error);
+
+        toast(
+        "Failed loading submissions : "+error.message
+        );
+
+    }
+
+
 }
 function openScore(username) {
   const s = window._subs.find(x => x.username === username);
