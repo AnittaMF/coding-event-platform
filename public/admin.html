@@ -189,7 +189,13 @@
     <section class="tab" id="tab-evaluate">
       <div class="card">
         <h2>Submissions & Scoring
-          <a href="/api/admin/export.csv" id="csvLink" style="float:right; font-size:13px">&#11015; Export CSV</a>
+          <button
+    id="csvLink"
+    onclick="exportCSV()"
+    style="float:right"
+>
+    ⬇ Export CSV
+</button>
         </h2>
         <table>
           <thead><tr><th>Participant</th><th>Answered</th><th>Violations</th><th>Auto?</th><th>Total</th><th></th></tr></thead>
@@ -489,6 +495,28 @@ async function saveScores() {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c =>
     ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
+}
+async function exportCSV() {
+    const response = await fetch("/api/admin/export.csv", {
+        headers: {
+            Authorization: "Bearer " + token
+        }
+    });
+
+    if (!response.ok) {
+        alert("Export failed");
+        return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "results.csv";
+    a.click();
+
+    window.URL.revokeObjectURL(url);
 }
 </script>
 </body>
