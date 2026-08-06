@@ -512,44 +512,35 @@ admin.get("/export.csv", (req, res) => {
 /* =======================================================================
    Fallback + start
    ======================================================================= */
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
-const PORT = process.env.PORT || 3000;
+// Admin page
+app.get("/admin", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "admin.html")
+    );
+});
 
+
+// Render health check
+app.get("/health", (req, res) => {
+    res.json({
+        status: "OK",
+        service: "Coding Platform"
+    });
+});
+
+
+// Start server ONLY ONCE
 app.listen(PORT, () => {
-    console.log(`Coding & Debugging Event Platform running on port ${PORT}`);
-    console.log(`Participant page : /`);
-    console.log(`Admin panel      : /admin`);
-});
 
-/* =====================================================
-   Health Check For Render
-===================================================== */
+    console.log(
+        `Coding & Debugging Event Platform running on port ${PORT}`
+    );
 
-app.get("/health",(req,res)=>{
- res.json({
-   status:"OK",
-   service:"Coding Platform"
- });
-});
-
-
-/* =====================================================
-   Start Server
-===================================================== */
-
-app.listen(PORT,()=>{
-
- console.log(
- `Coding & Debugging Event Platform running on port ${PORT}`
- );
-
- console.log(
- `Participant page : /`
- );
+    console.log("Participant page : /");
+    console.log("Admin panel      : /admin");
 
 });
-
 
 
 
