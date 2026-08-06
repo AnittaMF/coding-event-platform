@@ -514,11 +514,12 @@ admin.get("/export.csv", (req, res) => {
    ======================================================================= */
 app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
-app.listen(PORT, () => {
-  console.log(`Coding & Debugging Event Platform running on http://localhost:${PORT}`);
-  console.log(`  Participant page : http://localhost:${PORT}/`);
-  console.log(`  Admin panel      : http://localhost:3000/admin`);
+const PORT = process.env.PORT || 3000;
 
+app.listen(PORT, () => {
+    console.log(`Coding & Debugging Event Platform running on port ${PORT}`);
+    console.log(`Participant page : /`);
+    console.log(`Admin panel      : /admin`);
 });
 
 /* =====================================================
