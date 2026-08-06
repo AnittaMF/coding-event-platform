@@ -233,42 +233,98 @@ const API = {
 
 /* ---------------- Login ---------------- */
 async function login() {
+
   const btn = document.getElementById("loginBtn");
   const errEl = document.getElementById("loginErr");
+
   errEl.style.display = "none";
   btn.disabled = true;
+
   try {
+
     const u = document.getElementById("username").value.trim();
     const p = document.getElementById("password").value;
-    const data = await API.post("/api/login", { username: u, password: p });
+
+    const data = await API.post("/api/login", {
+      username:u,
+      password:p
+    });
+
+
+    console.log("LOGIN RESPONSE:", data);
+
 
     state.token = data.token;
     state.user = data.username;
-    state.maxViolations = data.maxViolations;
-    state.secondsLeft = data.durationMinutes * 60;
+
+
+    // Default values if backend does not send them
+    state.maxViolations = data.maxViolations || 3;
+
+    state.secondsLeft =
+      (data.durationMinutes || 60) * 60;
+
+
 
     const qs = await API.get("/api/questions");
-    state.questions = qs.questions;
-    // For debugging questions, preload the buggy starter code so the participant fixes it.
-    state.starter = state.questions.map(q => q.starterCode || "");
-    state.answers = state.questions.map(q => q.type === "debugging" ? (q.starterCode || "") : "");
-    state.status  = state.questions.map(() => "notvisited");
 
-    document.getElementById("loginPage").style.display = "none";
-    document.getElementById("examPage").style.display  = "block";
-    document.getElementById("userDisplay").textContent = state.user;
-    document.getElementById("maxWarn").textContent = state.maxViolations;
+
+    state.questions = qs.questions;
+
+
+    state.starter =
+      state.questions.map(q=>q.starterCode || "");
+
+
+    state.answers =
+      state.questions.map(q =>
+        q.type==="debugging"
+        ? q.starterCode || ""
+        : ""
+      );
+
+
+    state.status =
+      state.questions.map(()=>"notvisited");
+
+
+    document.getElementById("loginPage").style.display="none";
+
+    document.getElementById("examPage").style.display="block";
+
+
+    document.getElementById("userDisplay").textContent =
+      state.user;
+
+
+    document.getElementById("maxWarn").textContent =
+      state.maxViolations;
+
 
     buildPalette();
+
     loadQuestion(0);
+
     startTimer();
+
     enableAntiCheat();
-  } catch (e) {
-    errEl.textContent = e.message;
-    errEl.style.display = "block";
-  } finally {
-    btn.disabled = false;
+
+
+  } catch(e){
+
+    console.error(e);
+
+    errEl.textContent=e.message;
+
+    errEl.style.display="block";
+
   }
+  finally{
+
+    btn.disabled=false;
+
+  }
+
 }
 document.getElementById("password").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
 
@@ -510,36 +566,6 @@ border-radius:8px;">
 Waiting...
 </pre>
 
-async function runCode(){
-
-    const code=document.getElementById("answer").value;
-
-    const language=document.getElementById("language").value;
-
-    const response=await fetch("/api/run",{
-
-        method:"POST",
-
-        headers:{
-            "Content-Type":"application/json",
-            Authorization:"Bearer "+token
-        },
-
-        body:JSON.stringify({
-
-            source_code:code,
-
-            language_id:language
-
-        })
-
-    });
-
-    const data=await response.json();
-
-    document.getElementById("terminal").textContent=data.output;
-
-} 
 async function runCode() {
 
     const code = document.getElementById("answer").value;
