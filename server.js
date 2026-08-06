@@ -29,11 +29,18 @@ const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 const PARTICIPANTS_FILE = path.join(DATA_DIR, "participants.json");
 
-const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS || "admin@123";
+const ADMIN_USER = process.env.ADMIN_USER;
+const ADMIN_PASS = process.env.ADMIN_PASS; 
+ADMIN_USER=admin
+ADMIN_PASS=admin@123
+
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+const cors=require("cors");
+
+app.use(cors());
 
 /* =======================================================================
    Small JSON file helpers
@@ -271,7 +278,7 @@ app.post("/api/run", auth, async (req, res) => {
 
                     "Content-Type": "application/json",
 
-                    "X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY",
+                    "X-RapidAPI-Key":process.env.JUDGE0_KEY,
 
                     "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
 
@@ -291,15 +298,18 @@ app.post("/api/run", auth, async (req, res) => {
 
         });
 
-    } catch (err) {
+    } catch(err){
 
-        res.status(500).json({
+ console.log(
+ "Judge0 Error:",
+ err.response?.data || err.message
+ );
 
-            output: "Execution Failed"
+ res.status(500).json({
+   output:"Execution Failed"
+ });
 
-        });
-
-    }
+}
 
 });
 
@@ -504,11 +514,40 @@ admin.get("/export.csv", (req, res) => {
 /* =======================================================================
    Fallback + start
    ======================================================================= */
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+app.get("/admin",(req,res)=>{
+ res.status(403).send("Forbidden");
+});
 
-app.listen(PORT, () => {
-  console.log(`Coding & Debugging Event Platform running on http://localhost:${PORT}`);
-  console.log(`  Participant page : http://localhost:${PORT}/`);
-  console.log(`  Admin panel      : http://localhost:3000/admin`);
+/* =====================================================
+   Health Check For Render
+===================================================== */
+
+app.get("/health",(req,res)=>{
+ res.json({
+   status:"OK",
+   service:"Coding Platform"
+ });
+});
+
+
+/* =====================================================
+   Start Server
+===================================================== */
+
+app.listen(PORT,()=>{
+
+ console.log(
+ `Coding & Debugging Event Platform running on port ${PORT}`
+ );
+
+ console.log(
+ `Participant page : /`
+ );
 
 });
+
+
+
+
+
+
