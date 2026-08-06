@@ -32,7 +32,7 @@ const PARTICIPANTS_FILE = path.join(DATA_DIR, "participants.json");
 const ADMIN_USER = process.env.ADMIN_USER;
 const ADMIN_PASS = process.env.ADMIN_PASS; 
 ADMIN_USER=admin
-ADMIN_PASS=admin@123
+ADMIN_PASS=admin123
 
 
 app.use(express.json({ limit: "2mb" }));
