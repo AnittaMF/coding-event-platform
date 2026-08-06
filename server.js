@@ -29,10 +29,8 @@ const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 const PARTICIPANTS_FILE = path.join(DATA_DIR, "participants.json");
 
-const ADMIN_USER = process.env.ADMIN_USER;
-const ADMIN_PASS = process.env.ADMIN_PASS; 
-ADMIN_USER=admin
-ADMIN_PASS=admin123
+const ADMIN_USER = process.env.ADMIN_USER || "admin";
+const ADMIN_PASS = process.env.ADMIN_PASS ||"admin@123";
 
 
 app.use(express.json({ limit: "2mb" }));
