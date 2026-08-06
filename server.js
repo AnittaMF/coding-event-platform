@@ -512,8 +512,13 @@ admin.get("/export.csv", (req, res) => {
 /* =======================================================================
    Fallback + start
    ======================================================================= */
-app.get("/admin",(req,res)=>{
- res.status(403).send("Forbidden");
+app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
+
+app.listen(PORT, () => {
+  console.log(`Coding & Debugging Event Platform running on http://localhost:${PORT}`);
+  console.log(`  Participant page : http://localhost:${PORT}/`);
+  console.log(`  Admin panel      : http://localhost:3000/admin`);
+
 });
 
 /* =====================================================
