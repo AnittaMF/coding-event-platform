@@ -21,7 +21,7 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const axios = require("axios");
 // Allow overriding where data lives (Render Disk mounts at /var/data, for example)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const SUBMISSIONS_DIR = path.join(DATA_DIR, "submissions");
@@ -245,6 +245,62 @@ app.post("/api/submit", auth, (req, res) => {
 
   const attended = submission.answers.filter((a) => a.status === "answered").length;
   res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
+});
+
+app.post("/api/run", auth, async (req, res) => {
+
+    try {
+
+        const { source_code, language_id } = req.body;
+
+        const result = await axios.post(
+
+            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+
+            {
+
+                source_code,
+
+                language_id
+
+            },
+
+            {
+
+                headers: {
+
+                    "Content-Type": "application/json",
+
+                    "X-RapidAPI-Key": "YOUR_RAPIDAPI_KEY",
+
+                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
+
+                }
+
+            }
+
+        );
+
+        res.json({
+
+            output:
+                result.data.stdout ||
+                result.data.stderr ||
+                result.data.compile_output ||
+                "No Output"
+
+        });
+
+    } catch (err) {
+
+        res.status(500).json({
+
+            output: "Execution Failed"
+
+        });
+
+    }
+
 });
 
 /* =======================================================================
