@@ -127,8 +127,42 @@
       </div>
       <div class="qtext" id="qText"></div>
       <div class="editor-label" id="editorLabel">Type your code / answer below:</div>
-      <textarea id="answer" spellcheck="false" placeholder="// Write your code here..."></textarea>
-      <div class="navbtns">
+      <textarea id="answer" spellcheck="false"></textarea>
+
+<div style="margin-top:15px;display:flex;gap:10px;align-items:center;">
+
+    <select id="language">
+
+        <option value="71">Python</option>
+
+        <option value="50">C</option>
+
+        <option value="54">C++</option>
+
+        <option value="62">Java</option>
+
+    </select>
+
+    <button class="btn-save" onclick="runCode()">
+        ▶ Run Code
+    </button>
+
+</div>
+
+<h3 style="margin-top:20px;">Program Output</h3>
+
+<pre id="terminal"
+style="
+background:#000;
+color:#00ff00;
+padding:15px;
+height:180px;
+overflow:auto;
+border-radius:8px;">
+Waiting...
+</pre>
+
+<div class="navbtns">
         <button class="btn-nav"  onclick="prevQ()">&#8592; Previous</button>
         <button class="btn-save" onclick="saveAndNext()">Save &amp; Next</button>
         <button class="btn-skip" onclick="skipQ()">Skip (Don't know) &#8594;</button>
@@ -452,6 +486,106 @@ async function finalSubmit(auto) {
   msgEl.style.display = "block";
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
+<div style="margin-top:10px;">
+    <select id="language">
+        <option value="71">Python</option>
+        <option value="50">C</option>
+        <option value="54">C++</option>
+        <option value="62">Java</option>
+    </select>
+
+    <button onclick="runCode()">▶ Run Code</button>
+</div>
+
+<h3>Output</h3>
+
+<pre id="terminal"
+style="
+background:black;
+color:#00ff00;
+padding:15px;
+height:180px;
+overflow:auto;
+border-radius:8px;">
+Waiting...
+</pre>
+
+async function runCode(){
+
+    const code=document.getElementById("answer").value;
+
+    const language=document.getElementById("language").value;
+
+    const response=await fetch("/api/run",{
+
+        method:"POST",
+
+        headers:{
+            "Content-Type":"application/json",
+            Authorization:"Bearer "+token
+        },
+
+        body:JSON.stringify({
+
+            source_code:code,
+
+            language_id:language
+
+        })
+
+    });
+
+    const data=await response.json();
+
+    document.getElementById("terminal").textContent=data.output;
+
+} 
+async function runCode() {
+
+    const code = document.getElementById("answer").value;
+
+    const language = document.getElementById("language").value;
+
+    document.getElementById("terminal").textContent = "Running...";
+
+    try {
+
+        const response = await fetch("/api/run", {
+
+            method: "POST",
+
+            headers: {
+
+                "Content-Type": "application/json",
+
+                Authorization: "Bearer " + state.token
+
+            },
+
+            body: JSON.stringify({
+
+                source_code: code,
+
+                language_id: Number(language)
+
+            })
+
+        });
+
+        const data = await response.json();
+
+        document.getElementById("terminal").textContent =
+            data.output || "No Output";
+
+    } catch (err) {
+
+        document.getElementById("terminal").textContent =
+            "Execution Failed";
+
+    }
+
+}
+ 
 </script>
 </body>
 </html>
