@@ -546,59 +546,55 @@ async function finalSubmit(auto) {
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
 
+```js
 async function runCode() {
-
   const code = document.getElementById("answer").value;
   const language = document.getElementById("language").value;
   const terminal = document.getElementById("terminal");
 
-  if (!state.token) {
-    terminal.textContent = "Please login first.";
-    return;
-  }
-
-  if (!code.trim()) {
-    terminal.textContent = "Please enter some code first.";
-    return;
-  }
-
   terminal.textContent = "Running...";
 
   try {
-
     const response = await fetch("/api/run", {
       method: "POST",
-
       headers: {
         "Content-Type": "application/json",
         "Authorization": "Bearer " + state.token
       },
-
       body: JSON.stringify({
         source_code: code,
         language_id: Number(language)
       })
     });
 
-    const data = await response.json();
+    console.log("Run status:", response.status);
 
-    console.log("RUN RESPONSE:", data);
+    const text = await response.text();
+
+    console.log("Run raw response:", text);
+
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      terminal.textContent = "Server returned invalid response:\n" + text;
+      return;
+    }
 
     if (!response.ok) {
       terminal.textContent =
-        data.output || "Execution failed.";
+        "Server error (" + response.status + "):\n" +
+        (data.output || data.error || "Unknown error");
       return;
     }
 
     terminal.textContent =
-      data.output || "No output.";
+      data.output || "No output";
 
   } catch (err) {
-
     console.error("Run Code Error:", err);
-
-    terminal.textContent =
-      "Connection error: " + err.message;
+    terminal.textContent = "Connection error:\n" + err.message;
   }
 }
  
