@@ -244,7 +244,7 @@ async function login() {
 
     const u = document.getElementById("username").value.trim();
     const p = document.getElementById("password").value;
-
+    console.log("Sending login request...");
     const data = await API.post("/api/login", {
       username:u,
       password:p
@@ -542,7 +542,7 @@ async function finalSubmit(auto) {
   msgEl.style.display = "block";
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
-<div style="margin-top:10px;">
+
     <select id="language">
         <option value="71">Python</option>
         <option value="50">C</option>
@@ -551,7 +551,6 @@ async function finalSubmit(auto) {
     </select>
 
     <button onclick="runCode()">▶ Run Code</button>
-</div>
 
 <h3>Output</h3>
 
