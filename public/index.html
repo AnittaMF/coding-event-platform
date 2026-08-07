@@ -137,10 +137,6 @@
 
         <option value="50">C</option>
 
-        <option value="54">C++</option>
-
-        <option value="62">Java</option>
-
     </select>
 
     <button class="btn-save" onclick="runCode()">
@@ -214,7 +210,7 @@ let state = {
   token: null, user: null,
   questions: [], starter: [],
   current: 0, answers: [], status: [],
-  violations: 0, maxViolations: 3,
+  violations: 0, maxViolations: 1,
   examOver: false, secondsLeft: 0, timerId: null
 };
 
@@ -549,32 +545,6 @@ async function finalSubmit(auto) {
   msgEl.style.display = "block";
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
-
-<div style="margin-top:10px;">
-    <select id="language">
-        <option value="71">Python</option>
-        <option value="50">C</option>
-        <option value="54">C++</option>
-        <option value="62">Java</option>
-    </select>
-
-    <button onclick="runCode()">▶ Run Code</button>
-
-</div>
-
-
-<h3>Output</h3>
-
-<pre id="terminal"
-style="
-background:black;
-color:#00ff00;
-padding:15px;
-height:180px;
-overflow:auto;
-border-radius:8px;">
-Waiting...
-</pre>
 
 async function runCode() {
 
