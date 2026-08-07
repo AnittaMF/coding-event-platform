@@ -156,42 +156,74 @@ function adminOnly(req, res, next) {
    ======================================================================= */
 
 // Unified login for both admin and participants
-app.post("/api/login", (req, res) => {
-  const { username, password } = req.body || {};
-  if (!username || !password)
-    return res.status(400).json({ error: "Username and password required" });
+app.post("/api/run", auth, async (req, res) => {
+  try {
+    const { source_code, language_id } = req.body || {};
 
-  // Admin check first (credentials from env)
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    const token = makeToken();
-    sessions.set(token, { username, role: "admin", violations: 0 });
-    return res.json({ token, username, role: "admin" });
+    if (!source_code || !language_id) {
+      return res.status(400).json({
+        output: "Source code and language are required."
+      });
+    }
+
+    if (!process.env.JUDGE0_KEY) {
+      console.error("JUDGE0_KEY is missing from environment variables.");
+
+      return res.status(500).json({
+        output: "Server configuration error: JUDGE0_KEY is missing."
+      });
+    }
+
+    console.log("Running code...");
+    console.log("Language ID:", language_id);
+
+    const result = await axios.post(
+      "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+      {
+        source_code: String(source_code),
+        language_id: Number(language_id)
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-RapidAPI-Key": process.env.JUDGE0_KEY,
+          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
+        },
+        timeout: 30000
+      }
+    );
+
+    console.log("Judge0 response:", result.data);
+
+    const data = result.data;
+
+    const output =
+      data.stdout ||
+      data.stderr ||
+      data.compile_output ||
+      data.message ||
+      "Program executed successfully with no output.";
+
+    return res.json({
+      output: output
+    });
+
+  } catch (err) {
+
+    console.error("========== JUDGE0 ERROR ==========");
+    console.error("Message:", err.message);
+    console.error("Status:", err.response?.status);
+    console.error("Response:", err.response?.data);
+    console.error("==================================");
+
+    return res.status(500).json({
+      output:
+        err.response?.data?.message ||
+        err.response?.data?.error ||
+        err.message ||
+        "Execution Failed"
+    });
   }
-
-  // Participant check
-  const config = getConfig();
-  const p = getParticipants().find((u) => u.username === username);
-  if (!p || !verifyPassword(password, p.salt, p.hash))
-    return res.status(401).json({ error: "Invalid username or password" });
-
-  if (!config.eventOpen)
-    return res.status(403).json({ error: "The event has not started yet. Please wait for the admin." });
-
-  const token = makeToken();
-  sessions.set(token, { username, role: "participant", violations: 0 });
-  res.json({
-    token,
-    username,
-    role: "participant",
-    eventName: config.eventName,
-    durationMinutes: config.durationMinutes,
-    maxViolations: config.maxViolations,
-  });
-});
-
-app.post("/api/logout", auth, (req, res) => {
-  sessions.delete(req.token);
-  res.json({ ok: true });
 });
 
 /* =======================================================================
