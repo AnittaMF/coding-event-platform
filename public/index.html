@@ -548,48 +548,58 @@ async function finalSubmit(auto) {
 
 async function runCode() {
 
-    const code = document.getElementById("answer").value;
+  const code = document.getElementById("answer").value;
+  const language = document.getElementById("language").value;
+  const terminal = document.getElementById("terminal");
 
-    const language = document.getElementById("language").value;
+  if (!state.token) {
+    terminal.textContent = "Please login first.";
+    return;
+  }
 
-    document.getElementById("terminal").textContent = "Running...";
+  if (!code.trim()) {
+    terminal.textContent = "Please enter some code first.";
+    return;
+  }
 
-    try {
+  terminal.textContent = "Running...";
 
-        const response = await fetch("/api/run", {
+  try {
 
-            method: "POST",
+    const response = await fetch("/api/run", {
+      method: "POST",
 
-            headers: {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + state.token
+      },
 
-                "Content-Type": "application/json",
+      body: JSON.stringify({
+        source_code: code,
+        language_id: Number(language)
+      })
+    });
 
-                Authorization: "Bearer " + state.token
+    const data = await response.json();
 
-            },
+    console.log("RUN RESPONSE:", data);
 
-            body: JSON.stringify({
-
-                source_code: code,
-
-                language_id: Number(language)
-
-            })
-
-        });
-
-        const data = await response.json();
-
-        document.getElementById("terminal").textContent =
-            data.output || "No Output";
-
-    } catch (err) {
-
-        document.getElementById("terminal").textContent =
-            "Execution Failed";
-
+    if (!response.ok) {
+      terminal.textContent =
+        data.output || "Execution failed.";
+      return;
     }
 
+    terminal.textContent =
+      data.output || "No output.";
+
+  } catch (err) {
+
+    console.error("Run Code Error:", err);
+
+    terminal.textContent =
+      "Connection error: " + err.message;
+  }
 }
  
 </script>
