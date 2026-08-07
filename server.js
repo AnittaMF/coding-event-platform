@@ -34,11 +34,13 @@ const ADMIN_PASS = process.env.ADMIN_PASS ||"admin@123";
 
 
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "public")));
-
 const cors=require("cors");
 
 app.use(cors());
+
+app.use(express.json({ limit:"2mb" }));
+app.use(express.static(path.join(__dirname,"public")));
+
 
 /* =======================================================================
    Small JSON file helpers
@@ -152,78 +154,92 @@ function adminOnly(req, res, next) {
 }
 
 /* =======================================================================
-   AUTH ROUTES
-   ======================================================================= */
+AUTH ROUTES
+======================================================================= */
 
-// Unified login for both admin and participants
-app.post("/api/run", auth, async (req, res) => {
-  try {
-    const { source_code, language_id } = req.body || {};
+// Unified login for admin and participants
 
-    if (!source_code || !language_id) {
-      return res.status(400).json({
-        output: "Source code and language are required."
-      });
+app.post("/api/login", (req, res) => {
+
+    const { username, password } = req.body || {};
+
+    if (!username || !password) {
+        return res.status(400).json({
+            error: "Username and password required"
+        });
     }
 
-    if (!process.env.JUDGE0_KEY) {
-      console.error("JUDGE0_KEY is missing from environment variables.");
 
-      return res.status(500).json({
-        output: "Server configuration error: JUDGE0_KEY is missing."
-      });
+    // Admin login
+
+    if (
+        username === ADMIN_USER &&
+        password === ADMIN_PASS
+    ) {
+
+        const token = makeToken();
+
+        sessions.set(token, {
+            username,
+            role: "admin",
+            violations: 0
+        });
+
+
+        return res.json({
+            token,
+            username,
+            role: "admin"
+        });
+
     }
 
-    console.log("Running code...");
-    console.log("Language ID:", language_id);
 
-    const result = await axios.post(
-      "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
-      {
-        source_code: String(source_code),
-        language_id: Number(language_id)
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "X-RapidAPI-Key": process.env.JUDGE0_KEY,
-          "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-        },
-        timeout: 30000
-      }
+    // Participant login
+
+    const participants = getParticipants();
+
+    const user = participants.find(
+        p => p.username === username
     );
 
-    console.log("Judge0 response:", result.data);
 
-    const data = result.data;
+    if (!user) {
+        return res.status(401).json({
+            error:"Invalid username or password"
+        });
+    }
 
-    const output =
-      data.stdout ||
-      data.stderr ||
-      data.compile_output ||
-      data.message ||
-      "Program executed successfully with no output.";
 
-    return res.json({
-      output: output
+    const valid = verifyPassword(
+        password,
+        user.salt,
+        user.hash
+    );
+
+
+    if (!valid) {
+        return res.status(401).json({
+            error:"Invalid username or password"
+        });
+    }
+
+
+    const token = makeToken();
+
+    sessions.set(token,{
+        username,
+        role:"participant",
+        violations:0
     });
 
-  } catch (err) {
 
-    console.error("========== JUDGE0 ERROR ==========");
-    console.error("Message:", err.message);
-    console.error("Status:", err.response?.status);
-    console.error("Response:", err.response?.data);
-    console.error("==================================");
-
-    return res.status(500).json({
-      output:
-        err.response?.data?.message ||
-        err.response?.data?.error ||
-        err.message ||
-        "Execution Failed"
+    res.json({
+        token,
+        username,
+        role:"participant"
     });
-  }
+
 });
 
 /* =======================================================================
