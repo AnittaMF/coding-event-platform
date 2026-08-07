@@ -22,7 +22,7 @@
   .btn-primary { background: #0284c7; color: #fff; padding: 10px 20px; width: 100%; }
   .btn-primary:hover { background: #0369a1; }
   .btn-primary:disabled { background: #475569; cursor: wait; }
-
+   #answer:focus
   .exam { display: none; }
   .topbar { display: flex; justify-content: space-between; align-items: center;
             background: #1e293b; padding: 12px 20px; border-bottom: 1px solid #334155; }
@@ -89,7 +89,7 @@
 <body>
 
 <!-- LOGIN -->
-<div class="login-wrap" id="loginPage">
+<div class="login-wrap" id="loginPage" style="display:flex;">
   <div class="login-card">
     <h1>&lt;/&gt; Coding Exam Platform</h1>
     <p>Login to start your test</p>
@@ -98,12 +98,12 @@
     <input type="text" id="username" placeholder="Enter username" autocomplete="off">
     <label>Password</label>
     <input type="password" id="password" placeholder="Enter password">
-    <button class="btn-primary" id="loginBtn" onclick="login()">Login &amp; Start Exam</button>
+    <button class="btn-primary" id="loginBtn" onclick="login()"> Login &amp; Start Exam</button>
   </div>
 </div>
 
 <!-- EXAM -->
-<div class="exam" id="examPage">
+<div class="exam" id="examPage" style="display:none;">
   <div class="topbar">
     <span class="brand">&lt;/&gt; Coding Exam</span>
     <span class="meta">User: <b id="userDisplay"></b></span>
@@ -128,7 +128,11 @@
       <div class="qtext" id="qText"></div>
       <div class="editor-label" id="editorLabel">Type your code / answer below:</div>
       <textarea id="answer" spellcheck="false"></textarea>
+<<<<<<< HEAD
 
+=======
+     
+>>>>>>> 720cd6bee0393af3bed249a62b44ca55aef1e178
 <div style="margin-top:15px;display:flex;gap:10px;align-items:center;">
 
     <select id="language">
@@ -137,10 +141,13 @@
 
         <option value="50">C</option>
 
+<<<<<<< HEAD
         <option value="54">C++</option>
 
         <option value="62">Java</option>
 
+=======
+>>>>>>> 720cd6bee0393af3bed249a62b44ca55aef1e178
     </select>
 
     <button class="btn-save" onclick="runCode()">
@@ -161,7 +168,10 @@ overflow:auto;
 border-radius:8px;">
 Waiting...
 </pre>
+<<<<<<< HEAD
 
+=======
+>>>>>>> 720cd6bee0393af3bed249a62b44ca55aef1e178
 <div class="navbtns">
         <button class="btn-nav"  onclick="prevQ()">&#8592; Previous</button>
         <button class="btn-save" onclick="saveAndNext()">Save &amp; Next</button>
@@ -200,8 +210,16 @@ Waiting...
     <button class="btn-primary" onclick="closeOverlay()">I Understand — Continue Exam</button>
   </div>
 </div>
+ <script>
+window.onload = function(){
 
-<script>
+    document.getElementById("loginPage").style.display="flex";
+
+    document.getElementById("examPage").style.display="none";
+
+    document.getElementById("resultPage").style.display="none";
+
+};
 /* ---------------- State ---------------- */
 let state = {
   token: null, user: null,
@@ -542,7 +560,11 @@ async function finalSubmit(auto) {
   msgEl.style.display = "block";
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
+<<<<<<< HEAD
 <div style="margin-top:10px;">
+=======
+
+>>>>>>> 720cd6bee0393af3bed249a62b44ca55aef1e178
     <select id="language">
         <option value="71">Python</option>
         <option value="50">C</option>
@@ -551,7 +573,10 @@ async function finalSubmit(auto) {
     </select>
 
     <button onclick="runCode()">▶ Run Code</button>
+<<<<<<< HEAD
 </div>
+=======
+>>>>>>> 720cd6bee0393af3bed249a62b44ca55aef1e178
 
 <h3>Output</h3>
 

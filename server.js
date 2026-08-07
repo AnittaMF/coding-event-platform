@@ -21,7 +21,7 @@ const path = require("path");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const axios = require("axios");
 // Allow overriding where data lives (Render Disk mounts at /var/data, for example)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const SUBMISSIONS_DIR = path.join(DATA_DIR, "submissions");
@@ -30,10 +30,15 @@ const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
 const PARTICIPANTS_FILE = path.join(DATA_DIR, "participants.json");
 
 const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS || "admin@123";
+const ADMIN_PASS = process.env.ADMIN_PASS ||"admin@123";
+
 
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(path.join(__dirname, "public")));
+
+const cors=require("cors");
+
+app.use(cors());
 
 /* =======================================================================
    Small JSON file helpers
@@ -247,6 +252,65 @@ app.post("/api/submit", auth, (req, res) => {
   res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
 });
 
+app.post("/api/run", auth, async (req, res) => {
+
+    try {
+
+        const { source_code, language_id } = req.body;
+
+        const result = await axios.post(
+
+            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+
+            {
+
+                source_code,
+
+                language_id
+
+            },
+
+            {
+
+                headers: {
+
+                    "Content-Type": "application/json",
+
+                    "X-RapidAPI-Key":process.env.JUDGE0_KEY,
+
+                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
+
+                }
+
+            }
+
+        );
+
+        res.json({
+
+            output:
+                result.data.stdout ||
+                result.data.stderr ||
+                result.data.compile_output ||
+                "No Output"
+
+        });
+
+    } catch(err){
+
+ console.log(
+ "Judge0 Error:",
+ err.response?.data || err.message
+ );
+
+ res.status(500).json({
+   output:"Execution Failed"
+ });
+
+}
+
+});
+
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
    ======================================================================= */
@@ -448,11 +512,37 @@ admin.get("/export.csv", (req, res) => {
 /* =======================================================================
    Fallback + start
    ======================================================================= */
-app.get("/admin", (req, res) => res.sendFile(path.join(__dirname, "public", "admin.html")));
 
+// Admin page
+app.get("/admin", (req, res) => {
+    res.sendFile(
+        path.join(__dirname, "public", "admin.html")
+    );
+});
+
+
+// Render health check
+app.get("/health", (req, res) => {
+    res.json({
+        status: "OK",
+        service: "Coding Platform"
+    });
+});
+
+
+// Start server ONLY ONCE
 app.listen(PORT, () => {
-  console.log(`Coding & Debugging Event Platform running on http://localhost:${PORT}`);
-  console.log(`  Participant page : http://localhost:${PORT}/`);
-  console.log(`  Admin panel      : http://localhost:3000/admin`);
+
+    console.log(
+        `Coding & Debugging Event Platform running on port ${PORT}`
+    );
+
+    console.log("Participant page : /");
+    console.log("Admin panel      : /admin");
 
 });
+
+
+
+
+
