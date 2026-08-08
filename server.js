@@ -18,7 +18,7 @@ const express = require("express");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-
+const { execFile } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
 const axios = require("axios");
@@ -300,128 +300,204 @@ app.post("/api/submit", auth, (req, res) => {
   res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
 });
 
-app.post("/api/run", auth, async (req, res) => {
-    try {
-        const { source_code, language_id, stdin = "" } = req.body || {};
+app.post("/api/run", auth, (req, res) => {
+    const { source_code, language_id, stdin = "" } = req.body || {};
 
-        if (!source_code || !String(source_code).trim()) {
-            return res.status(400).json({
-                output: "Please enter some code first.",
-                status: "Error"
-            });
-        }
+    if (!source_code || !String(source_code).trim()) {
+        return res.status(400).json({
+            output: "Please enter some code first.",
+            status: "Error"
+        });
+    }
 
-        if (!language_id) {
-            return res.status(400).json({
-                output: "Please select a programming language.",
-                status: "Error"
-            });
-        }
+    if (!language_id) {
+        return res.status(400).json({
+            output: "Please select a programming language.",
+            status: "Error"
+        });
+    }
 
-        const apiKey = process.env.JUDGE0_KEY;
+    const code = String(source_code);
+    const input = String(stdin);
 
-        if (!apiKey) {
-            console.error("JUDGE0_KEY is missing.");
+    /*
+     * Python 3
+     * Judge0 language ID 71 was Python,
+     * but we no longer use Judge0.
+     */
+    if (Number(language_id) === 71) {
 
-            return res.status(500).json({
-                output: "JUDGE0_KEY is not configured on the server.",
-                status: "Server Error"
-            });
-        }
+        const tempDir = path.join(__dirname, "temp");
 
-        console.log("================================");
-        console.log("Running code with Judge0");
-        console.log("Judge0 URL: https://judge0-ce.p.rapidapi.com");
-        console.log("Language ID:", language_id);
-        console.log("================================");
+        fs.mkdirSync(tempDir, { recursive: true });
 
-        const response = await axios.post(
-            "https://judge0-ce.p.rapidapi.com/submissions",
+        const fileName =
+            "python_" +
+            crypto.randomBytes(8).toString("hex") +
+            ".py";
+
+        const filePath = path.join(tempDir, fileName);
+
+        fs.writeFileSync(filePath, code, "utf8");
+
+        execFile(
+            "python",
+            [filePath],
             {
-                source_code: String(source_code),
-                language_id: Number(language_id),
-                stdin: String(stdin)
+                input: input,
+                timeout: 5000,
+                maxBuffer: 1024 * 1024
             },
-            {
-                params: {
-                    base64_encoded: "false",
-                    wait: "true"
-                },
+            (error, stdout, stderr) => {
 
-                headers: {
-                    "Content-Type": "application/json",
-                    "X-RapidAPI-Key": apiKey,
-                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-                },
+                try {
+                    fs.unlinkSync(filePath);
+                } catch {}
 
-                timeout: 30000
+                if (error) {
+
+                    if (error.killed) {
+                        return res.json({
+                            output: "Program timed out.",
+                            status: "Time Limit Exceeded"
+                        });
+                    }
+
+                    return res.json({
+                        output: stderr || error.message,
+                        status: "Runtime / Compilation Error"
+                    });
+                }
+
+                return res.json({
+                    output: stdout || "Program finished with no output.",
+                    status: "Accepted"
+                });
             }
         );
 
-        const result = response.data || {};
-
-        console.log("Judge0 result:", result);
-
-        if (result.stderr) {
-            return res.json({
-                output: result.stderr,
-                status: result.status?.description || "Runtime Error"
-            });
-        }
-
-        if (result.compile_output) {
-            return res.json({
-                output: result.compile_output,
-                status: result.status?.description || "Compilation Error"
-            });
-        }
-
-        return res.json({
-            output:
-                result.stdout !== undefined && result.stdout !== null
-                    ? result.stdout
-                    : result.message || "Program finished with no output.",
-
-            status: result.status?.description || "Finished"
-        });
-
-    } catch (err) {
-
-        console.error("========== JUDGE0 ERROR ==========");
-        console.error("Status:", err.response?.status);
-        console.error("Response:", err.response?.data);
-        console.error("Message:", err.message);
-        console.error("==================================");
-
-        if (err.response) {
-            return res.status(500).json({
-                output:
-                    "Judge0/RapidAPI error (" +
-                    err.response.status +
-                    "):\n\n" +
-                    JSON.stringify(err.response.data, null, 2),
-
-                status: "Judge0 Error"
-            });
-        }
-
-        if (err.code === "ECONNABORTED") {
-            return res.status(504).json({
-                output: "Code execution timed out.",
-                status: "Timeout"
-            });
-        }
-
-        return res.status(500).json({
-            output:
-                "Could not connect to Judge0.\n\n" +
-                err.message,
-
-            status: "Connection Error"
-        });
+        return;
     }
-});
 
+
+    /*
+     * C
+     */
+    if (Number(language_id) === 50) {
+
+        const tempDir = path.join(__dirname, "temp");
+
+        fs.mkdirSync(tempDir, { recursive: true });
+
+        const id =
+            "c_" +
+            crypto.randomBytes(8).toString("hex");
+
+        const sourceFile = path.join(
+            tempDir,
+            `${id}.c`
+        );
+
+        const executableFile =
+            process.platform === "win32"
+                ? path.join(tempDir, `${id}.exe`)
+                : path.join(tempDir, id);
+
+        fs.writeFileSync(
+            sourceFile,
+            code,
+            "utf8"
+        );
+
+
+        /*
+         * Compile C program
+         */
+        execFile(
+            "gcc",
+            [
+                sourceFile,
+                "-o",
+                executableFile
+            ],
+            {
+                timeout: 10000,
+                maxBuffer: 1024 * 1024
+            },
+            (compileError, stdout, stderr) => {
+
+                if (compileError) {
+
+                    try {
+                        fs.unlinkSync(sourceFile);
+                    } catch {}
+
+                    return res.json({
+                        output: stderr || compileError.message,
+                        status: "Compilation Error"
+                    });
+                }
+
+
+                /*
+                 * Run compiled program
+                 */
+                execFile(
+                    executableFile,
+                    [],
+                    {
+                        input: input,
+                        timeout: 5000,
+                        maxBuffer: 1024 * 1024
+                    },
+                    (runError, runStdout, runStderr) => {
+
+                        try {
+                            fs.unlinkSync(sourceFile);
+                        } catch {}
+
+                        try {
+                            fs.unlinkSync(executableFile);
+                        } catch {}
+
+
+                        if (runError) {
+
+                            if (runError.killed) {
+                                return res.json({
+                                    output: "Program timed out.",
+                                    status: "Time Limit Exceeded"
+                                });
+                            }
+
+                            return res.json({
+                                output:
+                                    runStderr ||
+                                    runError.message,
+                                status: "Runtime Error"
+                            });
+                        }
+
+                        return res.json({
+                            output:
+                                runStdout ||
+                                "Program finished with no output.",
+                            status: "Accepted"
+                        });
+                    }
+                );
+            }
+        );
+
+        return;
+    }
+
+
+    return res.status(400).json({
+        output: "Unsupported programming language.",
+        status: "Error"
+    });
+});
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
    ======================================================================= */
