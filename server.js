@@ -301,52 +301,168 @@ app.post("/api/submit", auth, (req, res) => {
 });
 
 app.post("/api/run", auth, async (req, res) => {
-
     try {
+        const { source_code, language_id } = req.body || {};
 
-        const { source_code, language_id } = req.body;
-
-        if (!source_code || !language_id) {
+        // -----------------------------
+        // Validate request
+        // -----------------------------
+        if (!source_code || !String(source_code).trim()) {
             return res.status(400).json({
-                output: "Code and language are required."
+                output: "Please enter some code first."
             });
         }
 
-        const result = await axios.post(
-            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+        if (!language_id) {
+            return res.status(400).json({
+                output: "Please select a programming language."
+            });
+        }
+
+        // -----------------------------
+        // Check API key
+        // -----------------------------
+        const apiKey = process.env.JUDGE0_KEY;
+
+        if (!apiKey) {
+            console.error("JUDGE0_KEY is missing.");
+
+            return res.status(500).json({
+                output:
+                    "Server configuration error: JUDGE0_KEY is not configured on Render."
+            });
+        }
+
+        console.log("Running code...");
+        console.log("Language ID:", language_id);
+
+        // -----------------------------
+        // Send code to Judge0
+        // -----------------------------
+        const response = await axios.post(
+            "https://judge0-ce.p.rapidapi.com/submissions",
             {
-                source_code,
-                language_id
+                source_code: String(source_code),
+                language_id: Number(language_id),
             },
             {
+                params: {
+                    base64_encoded: "false",
+                    wait: "true"
+                },
+
                 headers: {
                     "Content-Type": "application/json",
-                    "X-RapidAPI-Key": process.env.JUDGE0_KEY,
+                    "X-RapidAPI-Key": apiKey,
                     "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-                }
+                },
+
+                timeout: 30000
             }
         );
 
-        res.json({
-            output:
-                result.data.stdout ||
-                result.data.stderr ||
-                result.data.compile_output ||
-                "No Output"
+        const result = response.data || {};
+
+        console.log("Judge0 response:", result);
+
+        // -----------------------------
+        // Compile/runtime error
+        // -----------------------------
+        if (result.stderr) {
+            return res.json({
+                output: result.stderr,
+                status: result.status?.description || "Runtime Error"
+            });
+        }
+
+        if (result.compile_output) {
+            return res.json({
+                output: result.compile_output,
+                status: result.status?.description || "Compilation Error"
+            });
+        }
+
+        // -----------------------------
+        // Normal program output
+        // -----------------------------
+        if (result.stdout !== undefined && result.stdout !== null) {
+            return res.json({
+                output: result.stdout,
+                status: result.status?.description || "Accepted"
+            });
+        }
+
+        // -----------------------------
+        // Other Judge0 errors
+        // -----------------------------
+        if (result.message) {
+            return res.status(400).json({
+                output: result.message,
+                status: result.status?.description || "Error"
+            });
+        }
+
+        return res.json({
+            output: "Program finished with no output.",
+            status: result.status?.description || "Finished"
         });
 
     } catch (err) {
 
-        console.log(
-            "Judge0 Error:",
-            err.response?.data || err.message
+        console.error("========== JUDGE0 ERROR ==========");
+
+        console.error(
+            "Status:",
+            err.response?.status
         );
 
-        res.status(500).json({
-            output: "Execution Failed"
+        console.error(
+            "Response:",
+            err.response?.data
+        );
+
+        console.error(
+            "Message:",
+            err.message
+        );
+
+        console.error("==================================");
+
+        // -----------------------------
+        // Axios/Judge0 error
+        // -----------------------------
+        if (err.response) {
+
+            const status = err.response.status;
+            const data = err.response.data;
+
+            return res.status(500).json({
+                output:
+                    "Judge0/RapidAPI error (" +
+                    status +
+                    "):\n\n" +
+                    JSON.stringify(data, null, 2)
+            });
+        }
+
+        // -----------------------------
+        // Timeout
+        // -----------------------------
+        if (err.code === "ECONNABORTED") {
+            return res.status(504).json({
+                output: "Code execution timed out."
+            });
+        }
+
+        // -----------------------------
+        // Network error
+        // -----------------------------
+        return res.status(500).json({
+            output:
+                "Could not connect to the code execution service.\n\n" +
+                err.message
         });
     }
-
 });
 
 
