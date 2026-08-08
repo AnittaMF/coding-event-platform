@@ -80,7 +80,7 @@ function ensureData() {
     writeJSON(CONFIG_FILE, {
       eventName: "Coding & Debugging Event",
       durationMinutes: 30,
-      maxViolations: 3,
+      maxViolations: 1,
       eventOpen: false, // participants can only log in when you start the event
     });
   }
@@ -90,11 +90,11 @@ function ensureData() {
       {
         id: genId(),
         type: "coding",
-        title: "Palindrome Number",
+        title: " ",
         marks: 10,
-        language: "Any",
+        language: " ",
         description:
-          "Write a program to check whether a given number is a PALINDROME.\n\nExample:\nInput: 121 -> Output: Palindrome\nInput: 123 -> Output: Not Palindrome",
+          "  ",
         starterCode: "",
       },
       {
@@ -265,7 +265,7 @@ app.get("/api/questions", auth, (req, res) => {
 app.post("/api/violation", auth, (req, res) => {
   const s = req.session;
   s.violations = (s.violations || 0) + 1;
-  const max = getConfig().maxViolations || 3;
+  const max = getConfig().maxViolations || 1;
   res.json({ violations: s.violations, autoSubmit: s.violations >= max });
 });
 
@@ -299,66 +299,58 @@ app.post("/api/submit", auth, (req, res) => {
   const attended = submission.answers.filter((a) => a.status === "answered").length;
   res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
 });
-document.getElementById("runBtn").addEventListener("click", async function () {
 
-    const code = document.getElementById("answer").value;
-    const languageId = document.getElementById("language").value;
-    const output = document.getElementById("output");
-    const runBtn = document.getElementById("runBtn");
-
-    if (!code.trim()) {
-        output.textContent = "Please enter some code.";
-        return;
-    }
-
-    runBtn.disabled = true;
-    runBtn.textContent = "⏳ Running...";
-
-    output.textContent = "Running code...\n";
+app.post("/api/run", auth, async (req, res) => {
 
     try {
 
-        const token = localStorage.getItem("token");
+        const { source_code, language_id } = req.body;
 
-        const response = await fetch("/api/run", {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-
-            body: JSON.stringify({
-                source_code: code,
-                language_id: Number(languageId)
-            })
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            output.textContent =
-                "Server Error:\n\n" +
-                (data.output || data.error || "Execution failed");
-
-            return;
+        if (!source_code || !language_id) {
+            return res.status(400).json({
+                output: "Code and language are required."
+            });
         }
 
-        output.textContent = data.output || "No Output";
+        const result = await axios.post(
+            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
+            {
+                source_code,
+                language_id
+            },
+            {
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-RapidAPI-Key": process.env.JUDGE0_KEY,
+                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
+                }
+            }
+        );
 
-    } catch (error) {
+        res.json({
+            output:
+                result.data.stdout ||
+                result.data.stderr ||
+                result.data.compile_output ||
+                "No Output"
+        });
 
-        output.textContent =
-            "Connection Error:\n\n" +
-            error.message;
+    } catch (err) {
 
-    } finally {
+        console.log(
+            "Judge0 Error:",
+            err.response?.data || err.message
+        );
 
-        runBtn.disabled = false;
-        runBtn.textContent = "▶ Run Code";
+        res.status(500).json({
+            output: "Execution Failed"
+        });
     }
 
 });
+
+
+
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
    ======================================================================= */
