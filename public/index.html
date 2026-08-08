@@ -2808,178 +2808,111 @@ async function finalSubmit(auto) {
 
 async function runCode() {
 
-    const answer =
-        document.getElementById(
-            "answer"
-        );
+    const answer = document.getElementById("answer");
+    const language = document.getElementById("language");
+    const terminal = document.getElementById("terminal");
+    const runBtn = document.getElementById("runBtn");
 
-
-    const language =
-        document.getElementById(
-            "language"
-        );
-
-
-    const terminal =
-        document.getElementById(
-            "terminal"
-        );
-
-
-    const runButton =
-        document.getElementById(
-            "runBtn"
-        );
-
-
-    const code =
-        answer.value;
-
-
-    if (!code.trim()) {
-
-        terminal.textContent =
-            "Please enter some code first.";
-
+    if (!answer || !language || !terminal || !runBtn) {
+        console.error("Run Code elements are missing.");
         return;
-
     }
 
+    const code = answer.value.trim();
+    const languageId = Number(language.value);
 
+    // -----------------------------
+    // Validate code
+    // -----------------------------
+    if (!code) {
+        terminal.textContent = "Please enter some code first.";
+        return;
+    }
+
+    // -----------------------------
+    // Validate login
+    // -----------------------------
     if (!state.token) {
-
         terminal.textContent =
-            "You are not logged in.";
-
+            "You are not logged in. Please login again.";
         return;
-
     }
 
-
-    runButton.disabled = true;
-
-    runButton.textContent =
-        "⏳ Running...";
-
-
-    terminal.textContent =
-        "Running code...";
-
+    // -----------------------------
+    // UI
+    // -----------------------------
+    runBtn.disabled = true;
+    runBtn.textContent = "⏳ Running...";
+    terminal.textContent = "Running code...\nPlease wait...";
 
     try {
 
-        const response =
-            await fetch(
-                "/api/run",
-                {
+        const response = await fetch("/api/run", {
+            method: "POST",
 
-                    method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + state.token
+            },
 
-                    headers: {
+            body: JSON.stringify({
+                source_code: code,
+                language_id: languageId
+            })
+        });
 
-                        "Content-Type":
-                            "application/json",
+        const text = await response.text();
 
-                        "Authorization":
-                            "Bearer " +
-                            state.token
+        console.log("Run response:", response.status, text);
 
-                    },
-
-                    body: JSON.stringify({
-
-                        source_code:
-                            code,
-
-                        language_id:
-                            Number(
-                                language.value
-                            )
-
-                    })
-
-                }
-            );
-
-
-        const text =
-            await response.text();
-
-
-        let data = {};
-
+        let data;
 
         try {
-
-            data =
-                text
-                    ? JSON.parse(text)
-                    : {};
-
-        }
-        catch (error) {
+            data = JSON.parse(text);
+        } catch (parseError) {
 
             terminal.textContent =
-                "Server returned invalid JSON:\n\n" +
+                "Server returned an invalid response:\n\n" +
                 text;
 
             return;
-
         }
 
-
+        // -----------------------------
+        // Backend error
+        // -----------------------------
         if (!response.ok) {
 
             terminal.textContent =
-                "Server error (" +
-                response.status +
-                "):\n\n" +
-                (
-                    data.error ||
-                    data.output ||
-                    "Unknown error"
-                );
+                data.output ||
+                data.error ||
+                "Code execution failed.";
 
             return;
-
         }
 
-
+        // -----------------------------
+        // Display result
+        // -----------------------------
         terminal.textContent =
             data.output ||
-            data.stdout ||
-            data.message ||
             "Program finished with no output.";
 
-    }
+    } catch (error) {
 
-
-    catch (error) {
-
-        console.error(
-            "Run Code Error:",
-            error
-        );
-
+        console.error("Run Code error:", error);
 
         terminal.textContent =
             "Connection error:\n\n" +
             error.message;
 
+    } finally {
+
+        runBtn.disabled = false;
+        runBtn.textContent = "▶ Run Code";
     }
-
-
-    finally {
-
-        runButton.disabled =
-            false;
-
-        runButton.textContent =
-            "▶ Run Code";
-
-    }
-
 }
+
 
 
 /* =====================================================
