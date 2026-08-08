@@ -59,22 +59,17 @@
    CODING + TERMINAL WORKSPACE
    ========================================================= */
 
-.coding-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 320px;
-    gap: 12px;
+ <div class="main">
 
-    width: 100%;
-    height: 390px;
-    min-height: 390px;
+    <div class="qhead">
+        <div class="qnum">Question 1 of 1</div>
+        <div class="qmarks">💻 CODING | Any | Marks: 10</div>
+    </div>
 
-    margin-top: 12px;
-}
-<div class="editor-section">
-    <label>Type your code / answer below:</label>
-
-    <div id="editor"></div>
-</div>
+    <div class="qtext">
+        <div id="questionTitle"></div>
+        <div id="questionText"></div>
+    </div>
 <div class="coding-workspace">
 
     <!-- LEFT: CODE EDITOR -->
@@ -130,25 +125,6 @@
 
 /* TERMINAL HEADER */
 
-.terminal-header {
-    height: 40px;
-    min-height: 40px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 0 12px;
-
-    background: #111827;
-
-    border-bottom: 1px solid #334155;
-
-    color: #e5e7eb;
-
-    font-size: 13px;
-    font-weight: 600;
-}
 
 .terminal-status {
     color: #64748b;
@@ -270,7 +246,136 @@
             border-radius: 8px; padding: 14px; font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px; line-height: 1.5; resize: vertical; tab-size: 4; }
   #answer:focus { outline: none; border-color: #38bdf8; }
- 
+ .coding-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 12px;
+    width: 100%;
+    height: 390px;
+    min-height: 390px;
+    margin-top: 12px;
+}
+
+.code-panel {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 390px;
+}
+
+.code-label {
+    display: block;
+    font-size: 13px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+}
+
+#answer {
+    flex: 1;
+    width: 100%;
+    min-height: 260px;
+    box-sizing: border-box;
+
+    background: #020617;
+    color: #7dd3fc;
+
+    border: 1px solid #334155;
+    border-radius: 8px;
+
+    padding: 14px;
+
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 14px;
+    line-height: 1.5;
+
+    resize: none;
+    tab-size: 4;
+}
+
+#answer:focus {
+    outline: none;
+    border-color: #38bdf8;
+}
+
+.code-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+#language {
+    background: #1e293b;
+    color: #e2e8f0;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.run-btn {
+    background: #0284c7;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    cursor: pointer;
+}
+
+.run-btn:hover {
+    background: #0369a1;
+}
+
+.terminal-panel {
+    display: flex;
+    flex-direction: column;
+    height: 390px;
+    min-width: 0;
+
+    border: 1px solid #334155;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.terminal-header {
+    height: 40px;
+    min-height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 12px;
+
+    background: #111827;
+    border-bottom: 1px solid #334155;
+
+    color: #e5e7eb;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.terminal-status {
+    color: #64748b;
+    font-size: 11px;
+}
+
+.terminal-output {
+    flex: 1;
+
+    margin: 0;
+    padding: 12px;
+
+    overflow-y: auto;
+
+    background: #000;
+    color: #22c55e;
+
+    font-family: Consolas, Monaco, "Courier New", monospace;
+    font-size: 12px;
+    line-height: 1.5;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+}
   .navbtns { display: flex; gap: 10px; margin-top: 16px; }
   .btn-nav    { background: #334155; color: #e2e8f0; padding: 10px 22px; }
   .btn-nav:hover { background: #475569; }
@@ -387,22 +492,7 @@ window.onload = function(){
     document.getElementById("resultPage").style.display="none";
 
 };
- let editor;
-
-function initEditor() {
-    editor = monaco.editor.create(
-        document.getElementById("editor"),
-        {
-            value: "",
-            language: "c",
-            theme: "vs-dark",
-            automaticLayout: true,
-            minimap: {
-                enabled: false
-            }
-        }
-    );
-}
+ 
 /* ---------------- State ---------------- */
 let state = {
   token: null, user: null,
@@ -543,28 +633,86 @@ function buildPalette() {
   });
 }
 
-function loadQuestion() {
+function loadQuestion(index) {
     try {
-        const q = questions[currentQuestion];
-
-        if (!q) {
-            console.error("Question not found:", currentQuestion);
+        if (!state.questions || state.questions.length === 0) {
+            console.error("No questions loaded.");
             return;
         }
 
-        document.getElementById("questionTitle").textContent =
-            q.title || "Question";
-
-        document.getElementById("questionText").textContent =
-            q.description || "";
-
-        // Monaco editor
-        if (editor) {
-            editor.setValue(q.answer || q.code || "");
+        // Keep index inside valid range
+        if (index < 0) index = 0;
+        if (index >= state.questions.length) {
+            index = state.questions.length - 1;
         }
 
+        state.current = index;
+
+        const q = state.questions[index];
+
+        console.log("Loading question:", q);
+
+        // Question number
+        const qNumber = document.querySelector(".qhead .qnum");
+        if (qNumber) {
+            qNumber.textContent =
+                "Question " + (index + 1) + " of " + state.questions.length;
+        }
+
+        // Question title
+        const title = document.getElementById("questionTitle");
+        if (title) {
+            title.textContent = q.title || q.question || "Question";
+        }
+
+        // Question description
+        const text = document.getElementById("questionText");
+        if (text) {
+            text.textContent =
+                q.description || q.question || "";
+        }
+
+        // Marks
+        const marks = document.querySelector(".qhead .qmarks");
+        if (marks) {
+            marks.textContent =
+                "💻 " + (q.type || "CODING").toUpperCase() +
+                " | Any | Marks: " + (q.marks || 10);
+        }
+
+        // Code textarea
+        const answer = document.getElementById("answer");
+
+        if (answer) {
+            answer.value = state.answers[index] || q.starterCode || "";
+        } else {
+            console.error("ERROR: #answer textarea not found.");
+        }
+
+        // Language
+        const language = document.getElementById("language");
+
+        if (language && q.language) {
+            if (q.language.toLowerCase() === "python") {
+                language.value = "71";
+            } else if (q.language.toLowerCase() === "c") {
+                language.value = "50";
+            }
+        }
+
+        // Terminal
+        const terminal = document.getElementById("terminal");
+
+        if (terminal) {
+            terminal.textContent = "Ready to run your code...";
+        }
+
+        refreshPalette();
+
+        console.log("Question loaded successfully.");
+
     } catch (err) {
-        console.error("loadQuestion error:", err);
+        console.error("loadQuestion() ERROR:", err);
     }
 }
 function refreshPalette() {
@@ -586,45 +734,327 @@ function hasRealAnswer(i, val) {
 }
 
 function saveCurrentAnswer() {
-  const val = document.getElementById("answer").value;
-  const i = state.current;
-  state.answers[i] = val;
-  if (hasRealAnswer(i, val)) state.status[i] = "answered";
-  else if (state.status[i] === "answered") state.status[i] = "notvisited";
+
+    const answer = document.getElementById("answer");
+
+    if (!answer) {
+        console.error("ERROR: #answer not found.");
+        return;
+    }
+
+    const val = answer.value;
+    const i = state.current;
+
+    state.answers[i] = val;
+
+    if (hasRealAnswer(i, val)) {
+        state.status[i] = "answered";
+    } else if (state.status[i] === "answered") {
+        state.status[i] = "notvisited";
+    }
+
+    refreshPalette();
 }
 
 function saveAndNext() { saveCurrentAnswer(); goNext(); }
 
 function skipQ() {
-  const i = state.current;
-  state.answers[i] = document.getElementById("answer").value;
-  if (!hasRealAnswer(i, state.answers[i])) state.status[i] = "skipped";
-  goNext();
+
+    const answer = document.getElementById("answer");
+
+    if (answer) {
+        state.answers[state.current] = answer.value;
+    }
+
+    if (!hasRealAnswer(state.current, state.answers[state.current])) {
+        state.status[state.current] = "skipped";
+    }
+
+    refreshPalette();
+
+    if (state.current < state.questions.length - 1) {
+        loadQuestion(state.current + 1);
+    }
 }
 
-function goNext() { loadQuestion((state.current + 1) % state.questions.length); }
-function prevQ()  { saveCurrentAnswer(); loadQuestion((state.current - 1 + state.questions.length) % state.questions.length); }
+function goNext() {
+
+    if (state.current < state.questions.length - 1) {
+        loadQuestion(state.current + 1);
+    } else {
+        showSummary();
+    }
+}
+function prevQ() {
+
+    saveCurrentAnswer();
+
+    if (state.current > 0) {
+        loadQuestion(state.current - 1);
+    }
+}
 
 /* ---------------- Anti-cheat ---------------- */
 function enableAntiCheat() {
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden && !state.examOver) registerViolation();
-  });
-  window.addEventListener("blur", () => {
-    if (!state.examOver && document.getElementById("examPage").style.display === "block") registerViolation();
-  });
-  document.addEventListener("contextmenu", e => e.preventDefault());
-  document.addEventListener("copy",  e => { if (!state.examOver) e.preventDefault(); });
-  document.addEventListener("paste", e => { if (!state.examOver) e.preventDefault(); });
-  document.addEventListener("keydown", e => {
-    if (state.examOver) return;
-    if (e.key === "F12") e.preventDefault();
-    if (e.ctrlKey && ["c","v","u","t","n","w"].includes(e.key.toLowerCase())) e.preventDefault();
-  });
-  window.addEventListener("beforeunload", e => {
-    if (!state.examOver) { e.preventDefault(); e.returnValue = ""; }
-  });
+
+    // Prevent installing the same event listeners more than once
+    if (state.antiCheatEnabled) {
+        return;
+    }
+
+    state.antiCheatEnabled = true;
+
+
+    // =====================================================
+    // TAB SWITCH / PAGE HIDDEN
+    // =====================================================
+
+    document.addEventListener("visibilitychange", () => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        const examPage = document.getElementById("examPage");
+
+        if (!examPage) {
+            return;
+        }
+
+        if (
+            document.hidden &&
+            examPage.style.display === "block"
+        ) {
+            registerViolation();
+        }
+
+    });
+
+
+    // =====================================================
+    // WINDOW LOSES FOCUS
+    // =====================================================
+
+    window.addEventListener("blur", () => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        const examPage = document.getElementById("examPage");
+
+        if (!examPage) {
+            return;
+        }
+
+        /*
+         * Only count blur when the page is still visible.
+         * This avoids counting the same tab switch twice
+         * with visibilitychange.
+         */
+        if (
+            examPage.style.display === "block" &&
+            !document.hidden
+        ) {
+            registerViolation();
+        }
+
+    });
+
+
+    // =====================================================
+    // RIGHT CLICK
+    // =====================================================
+
+    document.addEventListener("contextmenu", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        event.preventDefault();
+
+    });
+
+
+    // =====================================================
+    // COPY
+    // =====================================================
+
+    document.addEventListener("copy", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        event.preventDefault();
+
+    });
+
+
+    // =====================================================
+    // PASTE
+    // =====================================================
+
+    document.addEventListener("paste", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        event.preventDefault();
+
+    });
+
+
+    // =====================================================
+    // CUT
+    // =====================================================
+
+    document.addEventListener("cut", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        event.preventDefault();
+
+    });
+
+
+    // =====================================================
+    // KEYBOARD SHORTCUT PROTECTION
+    // =====================================================
+
+    document.addEventListener("keydown", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        const key = event.key.toLowerCase();
+
+
+        // ---------------------------------------------
+        // F12
+        // ---------------------------------------------
+
+        if (event.key === "F12") {
+
+            event.preventDefault();
+            return;
+
+        }
+
+
+        // ---------------------------------------------
+        // CTRL + C
+        // CTRL + V
+        // CTRL + X
+        // CTRL + U
+        // CTRL + S
+        // CTRL + P
+        // CTRL + T
+        // CTRL + N
+        // CTRL + W
+        // ---------------------------------------------
+
+        if (
+            event.ctrlKey &&
+            [
+                "c",
+                "v",
+                "x",
+                "u",
+                "s",
+                "p",
+                "t",
+                "n",
+                "w"
+            ].includes(key)
+        ) {
+
+            event.preventDefault();
+            return;
+
+        }
+
+
+        // ---------------------------------------------
+        // CTRL + SHIFT + I
+        // Developer Tools
+        // ---------------------------------------------
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            key === "i"
+        ) {
+
+            event.preventDefault();
+            return;
+
+        }
+
+
+        // ---------------------------------------------
+        // CTRL + SHIFT + J
+        // Console
+        // ---------------------------------------------
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            key === "j"
+        ) {
+
+            event.preventDefault();
+            return;
+
+        }
+
+
+        // ---------------------------------------------
+        // CTRL + SHIFT + C
+        // Inspect Element
+        // ---------------------------------------------
+
+        if (
+            event.ctrlKey &&
+            event.shiftKey &&
+            key === "c"
+        ) {
+
+            event.preventDefault();
+            return;
+
+        }
+
+    });
+
+
+    // =====================================================
+    // REFRESH / CLOSE PAGE WARNING
+    // =====================================================
+
+    window.addEventListener("beforeunload", (event) => {
+
+        if (state.examOver) {
+            return;
+        }
+
+        event.preventDefault();
+
+        /*
+         * Required by modern browsers to display the
+         * built-in leave-page confirmation.
+         */
+        event.returnValue = "";
+
+    });
+
 }
+
 
 let violationLock = false;
 async function registerViolation() {
@@ -652,7 +1082,13 @@ async function registerViolation() {
     " your exam will be auto-submitted.";
   document.getElementById("tabOverlay").style.display = "flex";
 }
-function closeOverlay() { document.getElementById("tabOverlay").style.display = "none"; }
+function closeOverlay() {
+    const overlay = document.getElementById("tabOverlay");
+
+    if (overlay) {
+        overlay.style.display = "none";
+    }
+}
 
 /* ---------------- Timer ---------------- */
 function startTimer() {
@@ -676,15 +1112,28 @@ function renderTime() {
 function clearTimerSafe() { if (state.timerId) { clearInterval(state.timerId); state.timerId = null; } }
 
 /* ---------------- Submit & summary ---------------- */
-function submitExam(auto) {
-  saveCurrentAnswer();
-  const unattendedCount = state.status.filter(st => st !== "answered").length;
-  if (!auto && unattendedCount > 0) {
-    const ok = confirm(unattendedCount + " question(s) are not attended. Submit anyway?\nPress Cancel to review them first.");
-    if (!ok) { showSummary(); return; }
-  }
-  showSummary();
-  if (auto) finalSubmit(true);
+async function submitExam(auto = false) {
+    saveCurrentAnswer();
+
+    const unattendedCount =
+        state.status.filter(st => st !== "answered").length;
+
+    if (!auto && unattendedCount > 0) {
+        const ok = confirm(
+            unattendedCount +
+            " question(s) are not attended. Submit anyway?\n\n" +
+            "Press Cancel to review them first."
+        );
+
+        if (!ok) {
+            showSummary();
+            return;
+        }
+    }
+
+    showSummary();
+
+    await finalSubmit(auto);
 }
 
 function showSummary() {
@@ -753,34 +1202,34 @@ async function finalSubmit(auto) {
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
 async function runCode() {
-
     const code = document.getElementById("answer").value;
     const language = document.getElementById("language").value;
     const terminal = document.getElementById("terminal");
+    const runBtn = document.getElementById("runBtn");
 
+    if (!code.trim()) {
+        terminal.textContent = "Please enter some code first.";
+        return;
+    }
+
+    runBtn.disabled = true;
+    runBtn.textContent = "⏳ Running...";
     terminal.textContent = "Running...";
 
     try {
-
         const response = await fetch("/api/run", {
             method: "POST",
-
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + state.token
             },
-
             body: JSON.stringify({
                 source_code: code,
                 language_id: Number(language)
             })
         });
 
-        console.log("Run status:", response.status);
-
         const text = await response.text();
-
-        console.log("Run raw response:", text);
 
         let data;
 
@@ -793,7 +1242,6 @@ async function runCode() {
         }
 
         if (!response.ok) {
-
             terminal.textContent =
                 "Server error (" +
                 response.status +
@@ -801,7 +1249,6 @@ async function runCode() {
                 (data.output ||
                  data.error ||
                  "Unknown error");
-
             return;
         }
 
@@ -809,12 +1256,14 @@ async function runCode() {
             data.output || "No output";
 
     } catch (err) {
-
         console.error("Run Code Error:", err);
 
         terminal.textContent =
             "Connection error:\n\n" +
             err.message;
+    } finally {
+        runBtn.disabled = false;
+        runBtn.textContent = "▶ Run Code";
     }
 }
  
