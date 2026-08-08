@@ -48,11 +48,219 @@
   .qhead .qmarks { font-size: 13px; color: #94a3b8; }
   .qtext { background: #1e293b; border-radius: 8px; padding: 16px; font-size: 15px; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
   .editor-label { font-size: 13px; color: #94a3b8; margin-bottom: 6px; }
+   /* =========================================================
+   CODING + TERMINAL WORKSPACE
+   ========================================================= */
+
+.coding-workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 12px;
+
+    width: 100%;
+    height: 390px;
+    min-height: 390px;
+
+    margin-top: 12px;
+}
+
+<div class="coding-workspace">
+
+    <!-- LEFT: CODE EDITOR -->
+    <div class="code-panel">
+
+        <label id="editorLabel" class="code-label">
+            Type your code / answer below:
+        </label>
+
+        <textarea
+            id="answer"
+            spellcheck="false"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+        ></textarea>
+
+        <div class="code-controls">
+
+            <select id="language">
+                <option value="71">Python</option>
+                <option value="50">C</option>
+                <option value="54">C++</option>
+                <option value="62">Java</option>
+            </select>
+
+            <button
+                type="button"
+                id="runBtn"
+                class="run-btn"
+                onclick="runCode()"
+            >
+                ▶ Run Code
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <!-- RIGHT: TERMINAL -->
+    <div class="terminal-panel">
+
+        <div class="terminal-header">
+            <span>💻 Terminal</span>
+            <span class="terminal-status">Output</span>
+        </div>
+
+        <pre id="terminal" class="terminal-output">Ready to run your code...</pre>
+
+    </div>
+
+</div>
+
+/* TERMINAL HEADER */
+
+.terminal-header {
+    height: 40px;
+    min-height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 12px;
+
+    background: #111827;
+
+    border-bottom: 1px solid #334155;
+
+    color: #e5e7eb;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.terminal-status {
+    color: #64748b;
+    font-size: 11px;
+}
+
+
+/* TERMINAL OUTPUT */
+
+.terminal-output {
+    flex: 1;
+
+    margin: 0;
+    padding: 12px;
+
+    overflow-y: auto;
+
+    background: #000000;
+
+    color: #22c55e;
+
+    font-family: Consolas, Monaco, "Courier New", monospace;
+
+    font-size: 12px;
+    line-height: 1.5;
+
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+
+/* TERMINAL SCROLLBAR */
+
+.terminal-output::-webkit-scrollbar {
+    width: 7px;
+}
+
+.terminal-output::-webkit-scrollbar-thumb {
+    background: #475569;
+    border-radius: 5px;
+}
+
+.terminal-output::-webkit-scrollbar-track {
+    background: #020617;
+}
+
+
+/* =========================================================
+   NAVIGATION BUTTONS
+   ========================================================= */
+
+.navbtns {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    margin-top: 12px;
+}
+
+
+/* =========================================================
+   SMALL SCREEN
+   ========================================================= */
+
+@media (max-width: 900px) {
+
+    .coding-workspace {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 0;
+    }
+
+    .code-panel {
+        height: 350px;
+    }
+
+    .terminal-panel {
+        height: 250px;
+    }
+}
+<div class="navbtns">
+
+    <button
+        type="button"
+        class="btn-nav"
+        onclick="prevQ()"
+    >
+        ← Previous
+    </button>
+
+    <button
+        type="button"
+        class="btn-save"
+        onclick="saveAndNext()"
+    >
+        Save & Next
+    </button>
+
+    <button
+        type="button"
+        class="btn-skip"
+        onclick="skipQ()"
+    >
+        Skip (Don't know) →
+    </button>
+
+    <button
+        type="button"
+        class="btn-submit"
+        id="finalSubmitBtn"
+        onclick="submitExam(false)"
+    >
+        Submit Exam
+    </button>
+
+</div>
+ 
   #answer { flex: 1; min-height: 260px; background: #020617; color: #7dd3fc; border: 1px solid #334155;
             border-radius: 8px; padding: 14px; font-family: 'Consolas', 'Courier New', monospace;
             font-size: 14px; line-height: 1.5; resize: vertical; tab-size: 4; }
   #answer:focus { outline: none; border-color: #38bdf8; }
-
+ 
   .navbtns { display: flex; gap: 10px; margin-top: 16px; }
   .btn-nav    { background: #334155; color: #e2e8f0; padding: 10px 22px; }
   .btn-nav:hover { background: #475569; }
@@ -84,211 +292,6 @@
   .overlay-card { background: #7f1d1d; padding: 36px; border-radius: 12px; text-align: center; max-width: 420px; }
   .overlay-card h2 { color: #fecaca; margin-bottom: 10px; }
   .overlay-card p  { color: #fca5a5; font-size: 14px; margin-bottom: 20px; }
-
-
-/* =========================================
-   CODING + TERMINAL WORKSPACE
-   ========================================= */
-
-.coding-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 330px;
-    gap: 12px;
-    width: 100%;
-    margin-top: 12px;
-    min-height: 430px;
-}
-
-
-/* LEFT SIDE - CODE */
-
-.code-panel {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-}
-
-.code-label {
-    color: #8fa8c7;
-    font-size: 14px;
-    margin-bottom: 7px;
-}
-
-#answer {
-    width: 100%;
-    flex: 1;
-    min-height: 350px;
-    resize: none;
-
-    background: #020617;
-    color: #38bdf8;
-
-    border: 1px solid #334155;
-    border-radius: 8px;
-
-    padding: 16px;
-
-    font-family: Consolas, Monaco, "Courier New", monospace;
-    font-size: 15px;
-    line-height: 1.6;
-
-    box-sizing: border-box;
-    outline: none;
-}
-
-#answer:focus {
-    border-color: #0ea5e9;
-}
-
-
-/* CODE CONTROLS */
-
-.code-controls {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-#language {
-    height: 42px;
-    padding: 0 10px;
-    font-size: 14px;
-    border-radius: 5px;
-}
-
-
-/* RUN BUTTON */
-
-.run-btn {
-    height: 42px;
-    padding: 0 22px;
-
-    border: none;
-    border-radius: 6px;
-
-    background: #16a34a;
-    color: white;
-
-    font-size: 14px;
-    font-weight: 600;
-
-    cursor: pointer;
-}
-
-.run-btn:hover {
-    background: #15803d;
-}
-
-.run-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-
-/* =========================================
-   RIGHT SIDE - TERMINAL
-   ========================================= */
-
-.terminal-panel {
-    display: flex;
-    flex-direction: column;
-
-    background: #020617;
-
-    border: 1px solid #334155;
-    border-radius: 8px;
-
-    overflow: hidden;
-
-    min-width: 0;
-}
-
-
-/* TERMINAL HEADER */
-
-.terminal-header {
-    height: 42px;
-
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-
-    padding: 0 13px;
-
-    background: #111827;
-
-    border-bottom: 1px solid #334155;
-
-    color: #e5e7eb;
-
-    font-size: 14px;
-    font-weight: 600;
-}
-
-.terminal-status {
-    color: #64748b;
-    font-size: 12px;
-}
-
-
-/* TERMINAL OUTPUT */
-
-.terminal-output {
-    flex: 1;
-
-    margin: 0;
-    padding: 14px;
-
-    overflow-y: auto;
-
-    background: #000000;
-
-    color: #22c55e;
-
-    font-family: Consolas, Monaco, "Courier New", monospace;
-    font-size: 13px;
-    line-height: 1.5;
-
-    white-space: pre-wrap;
-    word-break: break-word;
-}
-
-
-/* TERMINAL SCROLLBAR */
-
-.terminal-output::-webkit-scrollbar {
-    width: 8px;
-}
-
-.terminal-output::-webkit-scrollbar-thumb {
-    background: #475569;
-    border-radius: 5px;
-}
-
-.terminal-output::-webkit-scrollbar-track {
-    background: #020617;
-}
-
-
-/* =========================================
-   SMALL SCREEN
-   ========================================= */
-
-@media (max-width: 900px) {
-
-    .coding-workspace {
-        grid-template-columns: 1fr;
-    }
-
-    .terminal-panel {
-        min-height: 250px;
-    }
-
-    #answer {
-        min-height: 350px;
-    }
-}
 
 
  
@@ -335,48 +338,6 @@
       </div>
       <div class="qtext" id="qText"></div>
       <div class="editor-label" id="editorLabel">Type your code / answer below:</div>
-      <div class="coding-workspace">
-
-    <!-- LEFT: CODE EDITOR -->
-    <div class="code-panel">
-
-        <label class="code-label">
-            Type your code / answer below:
-        </label>
-
-        <textarea id="answer" spellcheck="false"></textarea>
-
-        <div class="code-controls">
-            <select id="language">
-                <option value="71">Python</option>
-                <option value="50">C</option>
-                <option value="54">C++</option>
-                <option value="62">Java</option>
-            </select>
-
-            <button id="runBtn" class="run-btn">
-                ▶ Run Code
-            </button>
-        </div>
-
-    </div>
-
-
-    <!-- RIGHT: TERMINAL -->
-    <div class="terminal-panel">
-
-        <div class="terminal-header">
-            <span>💻 Terminal</span>
-            <span class="terminal-status">Output</span>
-        </div>
-
-        <pre id="output" class="terminal-output">
-Ready to run your code...
-        </pre>
-
-    </div>
-
-</div>
 
 <!-- SUMMARY -->
 <div class="result-wrap" id="resultPage">
@@ -406,7 +367,7 @@ Ready to run your code...
     <button class="btn-primary" onclick="closeOverlay()">I Understand — Continue Exam</button>
   </div>
 </div>
- <script>
+<script>
 window.onload = function(){
 
     document.getElementById("loginPage").style.display="flex";
@@ -473,7 +434,7 @@ async function login() {
 
 
     // Default values if backend does not send them
-    state.maxViolations = data.maxViolations || 3;
+    state.maxViolations = data.maxViolations || 1;
 
     state.secondsLeft =
       (data.durationMinutes || 60) * 60;
@@ -757,54 +718,69 @@ async function finalSubmit(auto) {
   document.querySelectorAll("#unattendedList .go").forEach(b => b.remove());
 }
 async function runCode() {
-  const code = document.getElementById("answer").value;
-  const language = document.getElementById("language").value;
-  const terminal = document.getElementById("terminal");
 
-  terminal.textContent = "Running...";
+    const code = document.getElementById("answer").value;
+    const language = document.getElementById("language").value;
+    const terminal = document.getElementById("terminal");
 
-  try {
-    const response = await fetch("/api/run", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + state.token
-      },
-      body: JSON.stringify({
-        source_code: code,
-        language_id: Number(language)
-      })
-    });
-
-    console.log("Run status:", response.status);
-
-    const text = await response.text();
-
-    console.log("Run raw response:", text);
-
-    let data;
+    terminal.textContent = "Running...";
 
     try {
-      data = JSON.parse(text);
-    } catch {
-      terminal.textContent = "Server returned invalid response:\n" + text;
-      return;
+
+        const response = await fetch("/api/run", {
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + state.token
+            },
+
+            body: JSON.stringify({
+                source_code: code,
+                language_id: Number(language)
+            })
+        });
+
+        console.log("Run status:", response.status);
+
+        const text = await response.text();
+
+        console.log("Run raw response:", text);
+
+        let data;
+
+        try {
+            data = JSON.parse(text);
+        } catch {
+            terminal.textContent =
+                "Server returned invalid response:\n\n" + text;
+            return;
+        }
+
+        if (!response.ok) {
+
+            terminal.textContent =
+                "Server error (" +
+                response.status +
+                "):\n\n" +
+                (data.output ||
+                 data.error ||
+                 "Unknown error");
+
+            return;
+        }
+
+        terminal.textContent =
+            data.output || "No output";
+
+    } catch (err) {
+
+        console.error("Run Code Error:", err);
+
+        terminal.textContent =
+            "Connection error:\n\n" +
+            err.message;
     }
-
-    if (!response.ok) {
-      terminal.textContent =
-        "Server error (" + response.status + "):\n" +
-        (data.output || data.error || "Unknown error");
-      return;
-    }
-
-    terminal.textContent =
-      data.output || "No output";
-
-  } catch (err) {
-    console.error("Run Code Error:", err);
-    terminal.textContent = "Connection error:\n" + err.message;
-  }
 }
  
 </script>
