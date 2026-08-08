@@ -299,66 +299,66 @@ app.post("/api/submit", auth, (req, res) => {
   const attended = submission.answers.filter((a) => a.status === "answered").length;
   res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
 });
+document.getElementById("runBtn").addEventListener("click", async function () {
 
-app.post("/api/run", auth, async (req, res) => {
+    const code = document.getElementById("answer").value;
+    const languageId = document.getElementById("language").value;
+    const output = document.getElementById("output");
+    const runBtn = document.getElementById("runBtn");
+
+    if (!code.trim()) {
+        output.textContent = "Please enter some code.";
+        return;
+    }
+
+    runBtn.disabled = true;
+    runBtn.textContent = "⏳ Running...";
+
+    output.textContent = "Running code...\n";
 
     try {
 
-        const { source_code, language_id } = req.body;
+        const token = localStorage.getItem("token");
 
-        const result = await axios.post(
+        const response = await fetch("/api/run", {
+            method: "POST",
 
-            "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true",
-
-            {
-
-                source_code,
-
-                language_id
-
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
             },
 
-            {
-
-                headers: {
-
-                    "Content-Type": "application/json",
-
-                    "X-RapidAPI-Key":process.env.JUDGE0_KEY,
-
-                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
-
-                }
-
-            }
-
-        );
-
-        res.json({
-
-            output:
-                result.data.stdout ||
-                result.data.stderr ||
-                result.data.compile_output ||
-                "No Output"
-
+            body: JSON.stringify({
+                source_code: code,
+                language_id: Number(languageId)
+            })
         });
 
-    } catch(err){
+        const data = await response.json();
 
- console.log(
- "Judge0 Error:",
- err.response?.data || err.message
- );
+        if (!response.ok) {
+            output.textContent =
+                "Server Error:\n\n" +
+                (data.output || data.error || "Execution failed");
 
- res.status(500).json({
-   output:"Execution Failed"
- });
+            return;
+        }
 
-}
+        output.textContent = data.output || "No Output";
+
+    } catch (error) {
+
+        output.textContent =
+            "Connection Error:\n\n" +
+            error.message;
+
+    } finally {
+
+        runBtn.disabled = false;
+        runBtn.textContent = "▶ Run Code";
+    }
 
 });
-
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
    ======================================================================= */
