@@ -302,9 +302,8 @@ app.post("/api/submit", auth, (req, res) => {
 
 app.post("/api/run", auth, async (req, res) => {
     try {
-        const { source_code, language_id, stdin } = req.body || {};
+        const { source_code, language_id, stdin = "" } = req.body || {};
 
-        // Validate code
         if (!source_code || !String(source_code).trim()) {
             return res.status(400).json({
                 output: "Please enter some code first.",
@@ -312,7 +311,6 @@ app.post("/api/run", auth, async (req, res) => {
             });
         }
 
-        // Validate language
         if (!language_id) {
             return res.status(400).json({
                 output: "Please select a programming language.",
@@ -320,46 +318,50 @@ app.post("/api/run", auth, async (req, res) => {
             });
         }
 
-        // Your local Judge0 Docker server
-        const JUDGE0_URL =
-            process.env.JUDGE0_URL || "http://localhost:2358";
+        const apiKey = process.env.JUDGE0_KEY;
 
-        // Token from judge0.conf / environment
-        const JUDGE0_TOKEN =
-            process.env.JUDGE0_TOKEN ||
-            "MyJudge0Secret_2026_ChangeThis";
+        if (!apiKey) {
+            console.error("JUDGE0_KEY is missing.");
+
+            return res.status(500).json({
+                output: "JUDGE0_KEY is not configured on the server.",
+                status: "Server Error"
+            });
+        }
 
         console.log("================================");
         console.log("Running code with Judge0");
-        console.log("Judge0 URL:", JUDGE0_URL);
+        console.log("Judge0 URL: https://judge0-ce.p.rapidapi.com");
         console.log("Language ID:", language_id);
         console.log("================================");
 
         const response = await axios.post(
-            `${JUDGE0_URL}/submissions`,
+            "https://judge0-ce.p.rapidapi.com/submissions",
             {
                 source_code: String(source_code),
                 language_id: Number(language_id),
-                stdin: stdin ? String(stdin) : ""
+                stdin: String(stdin)
             },
             {
                 params: {
                     base64_encoded: "false",
                     wait: "true"
                 },
+
                 headers: {
                     "Content-Type": "application/json",
-                    "X-Judge0-Token": JUDGE0_TOKEN
+                    "X-RapidAPI-Key": apiKey,
+                    "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com"
                 },
+
                 timeout: 30000
             }
         );
 
         const result = response.data || {};
 
-        console.log("Judge0 response:", result);
+        console.log("Judge0 result:", result);
 
-        // Runtime error
         if (result.stderr) {
             return res.json({
                 output: result.stderr,
@@ -367,7 +369,6 @@ app.post("/api/run", auth, async (req, res) => {
             });
         }
 
-        // Compilation error
         if (result.compile_output) {
             return res.json({
                 output: result.compile_output,
@@ -375,31 +376,17 @@ app.post("/api/run", auth, async (req, res) => {
             });
         }
 
-        // Normal output
-        if (
-            result.stdout !== undefined &&
-            result.stdout !== null
-        ) {
-            return res.json({
-                output: result.stdout,
-                status: result.status?.description || "Accepted"
-            });
-        }
-
-        // Judge0 error message
-        if (result.message) {
-            return res.status(400).json({
-                output: result.message,
-                status: result.status?.description || "Error"
-            });
-        }
-
         return res.json({
-            output: "",
+            output:
+                result.stdout !== undefined && result.stdout !== null
+                    ? result.stdout
+                    : result.message || "Program finished with no output.",
+
             status: result.status?.description || "Finished"
         });
 
     } catch (err) {
+
         console.error("========== JUDGE0 ERROR ==========");
         console.error("Status:", err.response?.status);
         console.error("Response:", err.response?.data);
@@ -409,15 +396,12 @@ app.post("/api/run", auth, async (req, res) => {
         if (err.response) {
             return res.status(500).json({
                 output:
-                    "Judge0 error (" +
+                    "Judge0/RapidAPI error (" +
                     err.response.status +
                     "):\n\n" +
-                    JSON.stringify(
-                        err.response.data,
-                        null,
-                        2
-                    ),
-                status: "Error"
+                    JSON.stringify(err.response.data, null, 2),
+
+                status: "Judge0 Error"
             });
         }
 
@@ -432,11 +416,11 @@ app.post("/api/run", auth, async (req, res) => {
             output:
                 "Could not connect to Judge0.\n\n" +
                 err.message,
+
             status: "Connection Error"
         });
     }
 });
-
 
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
