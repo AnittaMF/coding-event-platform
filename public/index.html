@@ -1473,6 +1473,16 @@ async function login() {
 
         state.questions =
             questionData.questions;
+        console.log("QUESTIONS LOADED:", state.questions);
+console.log("QUESTION COUNT:", state.questions.length);
+
+state.questions.forEach((q, index) => {
+    console.log(
+        `Question ${index + 1}:`,
+        q.id,
+        q.title
+    );
+});
 
 
         if (state.questions.length === 0) {
