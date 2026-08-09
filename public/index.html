@@ -2929,6 +2929,33 @@ document.getElementById(
 );
 
 
+// SUMMARY PAGE SUBMIT BUTTON
+document.getElementById(
+    "summarySubmitBtn"
+).addEventListener(
+    "click",
+    function() {
+
+        console.log(
+            "SUMMARY SUBMIT CLICKED"
+        );
+
+        saveCurrentAnswer();
+
+        submitExam(false);
+
+    }
+);
+
+
+document.getElementById(
+    "closeOverlayBtn"
+).addEventListener(
+    "click",
+    closeOverlay
+);
+
+
 document.getElementById(
     "closeOverlayBtn"
 ).addEventListener(
