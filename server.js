@@ -14,6 +14,7 @@
  * Admin credentials come from environment variables in production:
  *   ADMIN_USER (default "admin")   ADMIN_PASS (default "admin@123")
  */
+const { MongoClient } = require("mongodb");
 const express = require("express");
 const crypto = require("crypto");
 const fs = require("fs");
@@ -21,6 +22,21 @@ const path = require("path");
 const { execFile } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+const mongoClient = new MongoClient(MONGODB_URI);
+
+let questionsCollection;
+
+async function connectMongoDB() {
+  await mongoClient.connect();
+
+  const db = mongoClient.db("coding_exam_platform");
+
+  questionsCollection = db.collection("questions");
+
+  console.log("MongoDB connected");
+}
 const axios = require("axios");
 // Allow overriding where data lives (Render Disk mounts at /var/data, for example)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
@@ -125,8 +141,20 @@ ensureData();
    ======================================================================= */
 const getConfig = () => readJSON(CONFIG_FILE, {});
 const setConfig = (c) => writeJSON(CONFIG_FILE, c);
-const getQuestions = () => readJSON(QUESTIONS_FILE, []);
-const setQuestions = (q) => writeJSON(QUESTIONS_FILE, q);
+async function getQuestions() {
+  return await questionsCollection
+    .find({})
+    .sort({ createdAt: 1 })
+    .toArray();
+}
+
+async function setQuestions(questions) {
+  await questionsCollection.deleteMany({});
+
+  if (questions.length > 0) {
+    await questionsCollection.insertMany(questions);
+  }
+}
 const getParticipants = () => readJSON(PARTICIPANTS_FILE, []);
 const setParticipants = (p) => writeJSON(PARTICIPANTS_FILE, p);
 
@@ -537,11 +565,11 @@ admin.post("/event/:action", (req, res) => {
 /* ---- Questions manager (full CRUD) ---- */
 admin.get("/questions", (req, res) => res.json({ questions: getQuestions() }));
 
-admin.post("/questions", (req, res) => {
+admin.post("/questions", async (req, res) => {
   const { type, title, marks, language, description, starterCode } = req.body || {};
   if (!title || !description)
     return res.status(400).json({ error: "Title and description are required" });
-  const questions = getQuestions();
+  const questions = await getQuestions();
   const q = {
     id: genId(),
     type: type === "debugging" ? "debugging" : "coding",
@@ -552,8 +580,9 @@ admin.post("/questions", (req, res) => {
     starterCode: String(starterCode || ""),
   };
   questions.push(q);
-  setQuestions(questions);
+  await setQuestions(questions);
   res.json(q);
+  createdAt: new Date()
 });
 
 admin.put("/questions/:id", (req, res) => {
