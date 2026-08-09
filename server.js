@@ -54,7 +54,22 @@ function readJSON(file, fallback) {
   }
 }
 function writeJSON(file, data) {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  const dir = path.dirname(file);
+
+  // Make sure the directory exists
+  fs.mkdirSync(dir, { recursive: true });
+
+  const tempFile = file + ".tmp";
+
+  // Write the complete data first
+  fs.writeFileSync(
+    tempFile,
+    JSON.stringify(data, null, 2),
+    "utf8"
+  );
+
+  // Replace the old file
+  fs.renameSync(tempFile, file);
 }
 
 /* =======================================================================
@@ -75,42 +90,27 @@ function verifyPassword(password, salt, hash) {
    First-run data bootstrap
    ======================================================================= */
 function ensureData() {
+  // Make sure required folders exist
+  fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.mkdirSync(SUBMISSIONS_DIR, { recursive: true });
 
+  // Create default event configuration only once
   if (!fs.existsSync(CONFIG_FILE)) {
     writeJSON(CONFIG_FILE, {
       eventName: "Coding & Debugging Event",
       durationMinutes: 30,
       maxViolations: 1,
-      eventOpen: false, // participants can only log in when you start the event
+      eventOpen: false
     });
   }
+
+  // Create an EMPTY question file only once
+  // Questions added from the admin panel will be stored here.
   if (!fs.existsSync(QUESTIONS_FILE)) {
-    // Two sample questions so the platform works immediately — replace via admin panel.
-    writeJSON(QUESTIONS_FILE, [
-      {
-        id: genId(),
-        type: "coding",
-        title: " ",
-        marks: 10,
-        language: " ",
-        description:
-          "  ",
-        starterCode: "",
-      },
-      {
-        id: genId(),
-        type: "debugging",
-        title: "Fix the Sum Function",
-        marks: 10,
-        language: "Python",
-        description:
-          "The function below should return the sum of a list but has a bug. Find and fix it.",
-        starterCode:
-          "def sum_list(nums):\n    total = 0\n    for n in nums:\n        total = n      # BUG: should add, not assign\n    return total",
-      },
-    ]);
+    writeJSON(QUESTIONS_FILE, []);
   }
+
+  // Create empty participant file only once
   if (!fs.existsSync(PARTICIPANTS_FILE)) {
     writeJSON(PARTICIPANTS_FILE, []);
   }
@@ -121,7 +121,6 @@ function genId() {
 }
 
 ensureData();
-
 /* =======================================================================
    Data accessors
    ======================================================================= */
