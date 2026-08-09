@@ -22,7 +22,7 @@ const path = require("path");
 const { execFile } = require("child_process");
 const app = express();
 const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI;
+const MONGODB_URI = process.env.MONGO_URI;
 
 const mongoClient = new MongoClient(MONGODB_URI);
 
