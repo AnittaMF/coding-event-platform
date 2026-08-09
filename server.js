@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 3000;
 const axios = require("axios");
 // Allow overriding where data lives (Render Disk mounts at /var/data, for example)
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+console.log("DATA_DIR:", DATA_DIR);
 const SUBMISSIONS_DIR = path.join(DATA_DIR, "submissions");
 const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
