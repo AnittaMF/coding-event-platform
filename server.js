@@ -98,7 +98,6 @@ function ensureData() {
   if (!fs.existsSync(CONFIG_FILE)) {
     writeJSON(CONFIG_FILE, {
       eventName: "Coding & Debugging Event",
-      durationMinutes: 45,
       maxViolations: 1,
       eventOpen: false
     });
