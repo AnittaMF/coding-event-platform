@@ -1,6 +1,6 @@
 {
   "eventName": "Coding & Debugging Event",
-  "durationMinutes": 30,
-  "maxViolations": 3,
-  "eventOpen": true
+  "durationMinutes": 45,
+  "maxViolations": 1,
+  "eventOpen":false
 }
