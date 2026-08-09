@@ -98,7 +98,6 @@ function ensureData() {
   if (!fs.existsSync(CONFIG_FILE)) {
     writeJSON(CONFIG_FILE, {
       eventName: "Coding & Debugging Event",
-      durationMinutes: 30,
       maxViolations: 1,
       eventOpen: false
     });
@@ -498,6 +497,16 @@ app.post("/api/run", auth, (req, res) => {
         status: "Error"
     });
 });
+app.get("/api/event-config", (req, res) => {
+    const config = getConfig();
+
+    res.json({
+        eventName: config.eventName,
+        durationMinutes: config.durationMinutes,
+        maxViolations: config.maxViolations,
+        eventOpen: config.eventOpen
+    });
+});
 /* =======================================================================
    ADMIN ROUTES — all gated by auth + adminOnly
    ======================================================================= */
@@ -512,8 +521,8 @@ admin.put("/config", (req, res) => {
   const c = getConfig();
   const { eventName, durationMinutes, maxViolations } = req.body || {};
   if (eventName !== undefined) c.eventName = String(eventName);
-  if (durationMinutes !== undefined) c.durationMinutes = Math.max(1, Number(durationMinutes) || 30);
-  if (maxViolations !== undefined) c.maxViolations = Math.max(1, Number(maxViolations) || 3);
+  if (durationMinutes !== undefined) c.durationMinutes = Math.max(1, Number(durationMinutes) || 45);
+  if (maxViolations !== undefined) c.maxViolations = Math.max(1, Number(maxViolations) || 1);
   setConfig(c);
   res.json(c);
 });
