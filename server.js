@@ -25,7 +25,12 @@ const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGO_URI;
 
 const mongoClient = new MongoClient(MONGODB_URI);
+if (!MONGODB_URI) {
+  console.error("MONGODB_URI is not configured");
+  process.exit(1);
+}
 
+const client = new MongoClient(MONGODB_URI);
 let questionsCollection;
 
 async function connectMongoDB() {
