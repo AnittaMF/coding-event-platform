@@ -697,11 +697,7 @@
                 padding: 20px;
             }
         }
-        <div class="final-submit-container">
-    <button id="finalSubmitBtn" type="button">
-        Final Submit
-    </button>
-</div>
+        
         .final-submit-container {
     display: flex;
     justify-content: center;
@@ -1976,23 +1972,17 @@ function saveAndNext() {
 ===================================================== */
 
 function goNext() {
+    // Always save the current question first
+    saveCurrentAnswer();
 
-    if (
-        state.current <
-        state.questions.length - 1
-    ) {
-
-        loadQuestion(
-            state.current + 1
-        );
-
-    }
-    else {
-
-        showSummary();
-
+    // Move to next question
+    if (state.current < state.questions.length - 1) {
+        loadQuestion(state.current + 1);
+        return;
     }
 
+    // Last question reached
+    showSummary();
 }
 
 
@@ -2455,189 +2445,106 @@ function clearTimerSafe() {
 ===================================================== */
 
 function showSummary() {
-
+    // Save the question currently displayed
     saveCurrentAnswer();
 
-
     const answered = [];
-
     const unattended = [];
 
-
-    state.status.forEach(
-        function(status, index) {
-
-            if (
-                status === "answered"
-            ) {
-
-                answered.push(index);
-
-            }
-            else {
-
-                unattended.push(index);
-
+    state.questions.forEach(function(question, index) {
+        if (
+            hasRealAnswer(
+                index,
+                state.answers[index]
+            )
+        ) {
+            state.status[index] = "answered";
+            answered.push(index);
+        } else {
+            if (state.status[index] !== "skipped") {
+                state.status[index] = "notvisited";
             }
 
+            unattended.push(index);
         }
-    );
+    });
 
+    refreshPalette();
 
-    document.getElementById(
-        "examPage"
-    ).style.display =
-        "none";
+    document.getElementById("examPage").style.display = "none";
+    document.getElementById("resultPage").style.display = "block";
 
-
-    document.getElementById(
-        "resultPage"
-    ).style.display =
-        "block";
-
-
-    document.getElementById(
-        "statAnswered"
-    ).textContent =
+    document.getElementById("statAnswered").textContent =
         answered.length;
 
-
-    document.getElementById(
-        "statUnattended"
-    ).textContent =
+    document.getElementById("statUnattended").textContent =
         unattended.length;
 
-
-    document.getElementById(
-        "statTotal"
-    ).textContent =
+    document.getElementById("statTotal").textContent =
         state.questions.length;
 
-
     const answeredList =
-        document.getElementById(
-            "answeredList"
-        );
-
+        document.getElementById("answeredList");
 
     answeredList.innerHTML = "";
 
-
     if (answered.length === 0) {
-
         answeredList.innerHTML =
             "<li>No questions answered.</li>";
+    } else {
+        answered.forEach(function(index) {
+            const li = document.createElement("li");
 
+            li.textContent =
+                "Question " + (index + 1) + " ✔";
+
+            answeredList.appendChild(li);
+        });
     }
-    else {
-
-        answered.forEach(
-            function(index) {
-
-                const li =
-                    document.createElement(
-                        "li"
-                    );
-
-
-                li.textContent =
-                    "Question " +
-                    (index + 1) +
-                    " ✔";
-
-
-                answeredList.appendChild(
-                    li
-                );
-
-            }
-        );
-
-    }
-
 
     const unattendedList =
-        document.getElementById(
-            "unattendedList"
-        );
-
+        document.getElementById("unattendedList");
 
     unattendedList.innerHTML = "";
 
-
     if (unattended.length === 0) {
-
         unattendedList.innerHTML =
             "<li>All questions attended.</li>";
+    } else {
+        unattended.forEach(function(index) {
+            const li = document.createElement("li");
 
-    }
-    else {
-
-        unattended.forEach(
-            function(index) {
-
-                const li =
-                    document.createElement(
-                        "li"
-                    );
-
-
-                li.textContent =
-                    "Question " +
-                    (index + 1) +
-                    " — " +
-                    (
-                        state.questions[index].title ||
-                        "Question"
-                    );
-
-
-                if (!state.examOver) {
-
-                    const button =
-                        document.createElement(
-                            "button"
-                        );
-
-
-                    button.type = "button";
-
-                    button.className = "go";
-
-                    button.textContent =
-                        "Attend now";
-
-
-                    button.addEventListener(
-                        "click",
-                        function() {
-
-                            backToQuestion(
-                                index
-                            );
-
-                        }
-                    );
-
-
-                    li.appendChild(
-                        button
-                    );
-
-                }
-
-
-                unattendedList.appendChild(
-                    li
+            li.textContent =
+                "Question " +
+                (index + 1) +
+                " — " +
+                (
+                    state.questions[index].title ||
+                    "Question"
                 );
 
+            if (!state.examOver) {
+                const button =
+                    document.createElement("button");
+
+                button.type = "button";
+                button.className = "go";
+                button.textContent = "Attend now";
+
+                button.addEventListener(
+                    "click",
+                    function() {
+                        backToQuestion(index);
+                    }
+                );
+
+                li.appendChild(button);
             }
-        );
 
+            unattendedList.appendChild(li);
+        });
     }
-
 }
-
 
 /* =====================================================
    RETURN TO QUESTION
@@ -2729,52 +2636,58 @@ async function submitExam(auto = false) {
    FINAL SUBMIT
 ===================================================== */
 
-async function finalSubmit(auto) {
+async function finalSubmit(auto = false) {
 
     if (state.examOver) {
         return;
     }
 
+    // Save the currently displayed question
+    saveCurrentAnswer();
 
-    state.examOver = true;
+    // Make absolutely sure every question has a status
+    state.questions.forEach(function(question, index) {
 
+        const answer =
+            state.answers[index] || "";
 
-    clearTimerSafe();
-
+        if (hasRealAnswer(index, answer)) {
+            state.status[index] = "answered";
+        } else if (
+            state.status[index] !== "skipped"
+        ) {
+            state.status[index] = "notvisited";
+        }
+    });
 
     const payload = {
+        autoSubmitted: Boolean(auto),
 
-        autoSubmitted:
-            Boolean(auto),
+        answers: state.questions.map(
+            function(question, index) {
 
-        answers:
-            state.questions.map(
-                function(question, index) {
+                return {
+                    id: question.id,
 
-                    return {
+                    answer:
+                        state.answers[index] || "",
 
-                        id: question.id,
+                    status:
+                        state.status[index] ||
+                        "notvisited"
+                };
 
-                        answer:
-                            state.answers[index] || "",
-
-                        status:
-                            state.status[index] ||
-                            "notvisited"
-
-                    };
-
-                }
-            )
-
+            }
+        )
     };
 
+    console.log(
+        "FINAL SUBMIT PAYLOAD:",
+        payload
+    );
 
     const message =
-        document.getElementById(
-            "finalMsg"
-        );
-
+        document.getElementById("finalMsg");
 
     try {
 
@@ -2784,6 +2697,9 @@ async function finalSubmit(auto) {
                 payload
             );
 
+        state.examOver = true;
+
+        clearTimerSafe();
 
         message.textContent =
             "✔ Submitted successfully! Attended " +
@@ -2792,41 +2708,44 @@ async function finalSubmit(auto) {
             result.total +
             " questions.";
 
+        message.style.display = "block";
 
-    }
-    catch (error) {
+        document.getElementById(
+            "examPage"
+        ).style.display = "none";
+
+        document.getElementById(
+            "resultPage"
+        ).style.display = "block";
+
+        document.getElementById(
+            "finalSubmitBtn"
+        ).style.display = "none";
+
+        document.querySelectorAll(
+            "#unattendedList .go"
+        ).forEach(function(button) {
+            button.remove();
+        });
+
+    } catch (error) {
 
         console.error(
             "Submit error:",
             error
         );
 
+        // IMPORTANT:
+        // Do not mark examOver when submission failed.
+        state.examOver = false;
 
         message.textContent =
-            "⚠ Could not reach server: " +
+            "⚠ Submission failed: " +
             error.message;
 
+        message.style.display = "block";
     }
-
-
-    message.style.display =
-        "block";
-
-
-    document.getElementById(
-        "finalSubmitBtn"
-    ).style.display =
-        "none";
-
-
-    document.querySelectorAll(
-        "#unattendedList .go"
-    ).forEach(
-        button => button.remove()
-    );
-
 }
-
 
 /* =====================================================
    RUN CODE
