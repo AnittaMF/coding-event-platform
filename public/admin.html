@@ -302,76 +302,302 @@ async function setEvent(action) {
 
 /* ---------- Questions ---------- */
 function onTypeChange() {
-  document.getElementById("starterWrap").style.display =
-    document.getElementById("qType").value === "debugging" ? "block" : "none";
+
+    const type =
+        document.getElementById("qType").value;
+
+    const starter =
+        document.getElementById("starterWrap");
+
+    if (type === "debugging") {
+        starter.style.display = "block";
+    } else {
+        starter.style.display = "none";
+    }
 }
 async function loadQuestions() {
-  const { questions } = await api("GET", "/api/admin/questions");
-  questionsCache = questions;
-  document.getElementById("qCount").textContent = questions.length;
-  const tb = document.getElementById("qTable");
-  tb.innerHTML = "";
-  questions.forEach((q, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML =
-      `<td>${i + 1}</td>
-       <td><span class="tag ${q.type}">${q.type}</span></td>
-       <td>${escapeHtml(q.title)}</td>
-       <td>${q.marks}</td>
-       <td>${escapeHtml(q.language)}</td>
-       <td>
-         <button class="btn-gray" onclick="editQuestion('${q.id}')">Edit</button>
-         <button class="btn-red" onclick="deleteQuestion('${q.id}')">Delete</button>
-       </td>`;
-    tb.appendChild(tr);
-  });
+    try {
+        console.log("Loading questions from server...");
+
+        const data = await api(
+            "GET",
+            "/api/admin/questions"
+        );
+
+        console.log("QUESTIONS FROM SERVER:", data);
+
+        const questions = data.questions || [];
+
+        document.getElementById("qCount").textContent =
+            questions.length;
+
+        const tbody = document.getElementById("qTable");
+
+        tbody.innerHTML = "";
+
+        questions.forEach((q, index) => {
+
+            const tr = document.createElement("tr");
+
+            tr.innerHTML = `
+                <td>${index + 1}</td>
+
+                <td>
+                    <span class="tag ${q.type}">
+                        ${q.type}
+                    </span>
+                </td>
+
+                <td>${escapeHtml(q.title)}</td>
+
+                <td>${q.marks}</td>
+
+                <td>${escapeHtml(q.language || "Any")}</td>
+
+                <td>
+                    <button
+                        class="btn-gray"
+                        onclick="editQuestion('${q.id}')"
+                    >
+                        Edit
+                    </button>
+
+                    <button
+                        class="btn-red"
+                        onclick="deleteQuestion('${q.id}')"
+                    >
+                        Delete
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        });
+
+    } catch (error) {
+
+        console.error(
+            "LOAD QUESTIONS ERROR:",
+            error
+        );
+
+        alert(
+            "Could not load questions:\n\n" +
+            (error.message || error)
+        );
+    }
 }
 async function saveQuestion() {
-  const id = document.getElementById("qId").value;
-  const payload = {
-    type: document.getElementById("qType").value,
-    title: document.getElementById("qTitle").value.trim(),
-    marks: document.getElementById("qMarks").value,
-    language: document.getElementById("qLang").value.trim(),
-    description: document.getElementById("qDesc").value,
-    starterCode: document.getElementById("qStarter").value
-  };
-  if (!payload.title || !payload.description) { toast("Title and description required"); return; }
-  try {
-    if (id) await api("PUT", "/api/admin/questions/" + id, payload);
-    else    await api("POST", "/api/admin/questions", payload);
-    resetQForm(); await loadQuestions(); toast("Question saved");
-  } catch (e) { toast(e.message); }
+    try {
+        const id = document.getElementById("qId").value.trim();
+
+        const type = document.getElementById("qType").value;
+        const title = document.getElementById("qTitle").value.trim();
+        const marks = Number(document.getElementById("qMarks").value);
+        const language = document.getElementById("qLang").value.trim();
+        const description = document.getElementById("qDesc").value.trim();
+        const starterCode = document.getElementById("qStarter").value;
+
+        // Validate
+        if (!title) {
+            alert("Please enter the question title.");
+            return;
+        }
+
+        if (!description) {
+            alert("Please enter the question description.");
+            return;
+        }
+
+        if (!marks || marks <= 0) {
+            alert("Please enter valid marks.");
+            return;
+        }
+
+        const question = {
+            type,
+            title,
+            marks,
+            language: language || "Any",
+            description,
+            starterCode: type === "debugging" ? starterCode : ""
+        };
+
+        console.log("QUESTION TO SAVE:", question);
+
+        let result;
+
+        // EDIT existing question
+        if (id) {
+            result = await api(
+                "PUT",
+                "/api/admin/questions/" + encodeURIComponent(id),
+                question
+            );
+        }
+
+        // ADD new question
+        else {
+            result = await api(
+                "POST",
+                "/api/admin/questions",
+                question
+            );
+        }
+
+        console.log("SERVER QUESTION RESPONSE:", result);
+
+        alert(
+            id
+                ? "Question updated successfully."
+                : "Question added successfully."
+        );
+
+        resetQForm();
+
+        // Reload question list from server
+        await loadQuestions();
+
+    } catch (error) {
+        console.error("SAVE QUESTION ERROR:", error);
+
+        alert(
+            "Failed to save question:\n\n" +
+            (error.message || error)
+        );
+    }
 }
-function editQuestion(id) {
-  const q = questionsCache.find(x => x.id === id);
-  if (!q) return;
-  document.getElementById("qId").value = q.id;
-  document.getElementById("qType").value = q.type;
-  document.getElementById("qTitle").value = q.title;
-  document.getElementById("qMarks").value = q.marks;
-  document.getElementById("qLang").value = q.language;
-  document.getElementById("qDesc").value = q.description;
-  document.getElementById("qStarter").value = q.starterCode || "";
-  onTypeChange();
-  document.getElementById("qFormTitle").textContent = "Edit Question";
-  document.getElementById("qCancel").style.display = "inline-block";
-  window.scrollTo({ top: 0, behavior: "smooth" });
+async function editQuestion(id) {
+    try {
+
+        const data = await api(
+            "GET",
+            "/api/admin/questions"
+        );
+
+        const q = (data.questions || [])
+            .find(item => item.id === id);
+
+        if (!q) {
+            alert("Question not found.");
+            return;
+        }
+
+        document.getElementById("qId").value =
+            q.id;
+
+        document.getElementById("qType").value =
+            q.type;
+
+        document.getElementById("qTitle").value =
+            q.title;
+
+        document.getElementById("qMarks").value =
+            q.marks;
+
+        document.getElementById("qLang").value =
+            q.language || "Any";
+
+        document.getElementById("qDesc").value =
+            q.description;
+
+        document.getElementById("qStarter").value =
+            q.starterCode || "";
+
+        document.getElementById("qFormTitle").textContent =
+            "Edit Question";
+
+        document.getElementById("qCancel").style.display =
+            "inline-block";
+
+        onTypeChange();
+
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+
+    } catch (error) {
+
+        console.error(
+            "EDIT QUESTION ERROR:",
+            error
+        );
+
+        alert(
+            "Could not edit question:\n\n" +
+            (error.message || error)
+        );
+    }
 }
 function resetQForm() {
-  ["qId","qTitle","qLang","qDesc","qStarter"].forEach(i => document.getElementById(i).value = "");
-  document.getElementById("qType").value = "coding";
-  document.getElementById("qMarks").value = "10";
-  onTypeChange();
-  document.getElementById("qFormTitle").textContent = "Add a Question";
-  document.getElementById("qCancel").style.display = "none";
+
+    document.getElementById("qId").value = "";
+
+    document.getElementById("qType").value =
+        "coding";
+
+    document.getElementById("qTitle").value =
+        "";
+
+    document.getElementById("qMarks").value =
+        "10";
+
+    document.getElementById("qLang").value =
+        "Any";
+
+    document.getElementById("qDesc").value =
+        "";
+
+    document.getElementById("qStarter").value =
+        "";
+
+    document.getElementById("qFormTitle").textContent =
+        "Add a Question";
+
+    document.getElementById("qCancel").style.display =
+        "none";
+
+    onTypeChange();
 }
 async function deleteQuestion(id) {
-  if (!confirm("Delete this question?")) return;
-  await api("DELETE", "/api/admin/questions/" + id);
-  await loadQuestions(); toast("Deleted");
-}
 
+    if (!confirm(
+        "Are you sure you want to delete this question?"
+    )) {
+        return;
+    }
+
+    try {
+
+        const result = await api(
+            "DELETE",
+            "/api/admin/questions/" +
+            encodeURIComponent(id)
+        );
+
+        console.log(
+            "DELETE RESPONSE:",
+            result
+        );
+
+        alert("Question deleted successfully.");
+
+        await loadQuestions();
+
+    } catch (error) {
+
+        console.error(
+            "DELETE QUESTION ERROR:",
+            error
+        );
+
+        alert(
+            "Failed to delete question:\n\n" +
+            (error.message || error)
+        );
+    }
+}
 /* ---------- Participants ---------- */
 async function loadParticipants() {
   const { participants } = await api("GET", "/api/admin/participants");
