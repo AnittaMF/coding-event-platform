@@ -1110,14 +1110,22 @@
 
     </div>
 
+<div
+    id="finalMsg"
+    class="final-msg"
+></div>
 
-    <div
-        id="finalMsg"
-        class="final-msg"
-    ></div>
-
+<div class="summary-submit">
+    <button
+        type="button"
+        id="summarySubmitBtn"
+        class="btn-submit"
+    >
+        Submit Exam
+    </button>
 </div>
 
+</div>
 
 <!-- =====================================================
      ANTI-CHEAT OVERLAY
@@ -2719,8 +2727,21 @@ async function finalSubmit(auto = false) {
         ).style.display = "block";
 
         document.getElementById(
-            "finalSubmitBtn"
-        ).style.display = "none";
+    "summarySubmitBtn"
+).addEventListener(
+    "click",
+    function() {
+
+        console.log(
+            "Summary Submit button clicked"
+        );
+
+        saveCurrentAnswer();
+
+        submitExam(false);
+
+    }
+);
 
         document.querySelectorAll(
             "#unattendedList .go"
