@@ -20,48 +20,89 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { execFile } = require("child_process");
-const app = express();
-const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGO_URI;
+const axios = require("axios");
+const cors = require("cors");
 
-const mongoClient = new MongoClient(MONGODB_URI);
-if (!MONGODB_URI) {
-  console.error("MONGODB_URI is not configured");
+const app = express();
+
+const PORT = process.env.PORT || 3000;
+
+// =====================================================
+// MONGODB
+// =====================================================
+
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error("ERROR: MONGO_URI environment variable is not configured.");
   process.exit(1);
 }
 
-const client = new MongoClient(MONGODB_URI);
+const mongoClient = new MongoClient(MONGO_URI);
+
 let questionsCollection;
 
 async function connectMongoDB() {
-  await mongoClient.connect();
+  try {
+    await mongoClient.connect();
 
-  const db = mongoClient.db("coding_exam_platform");
+    const db = mongoClient.db("coding_exam_platform");
 
-  questionsCollection = db.collection("questions");
+    questionsCollection = db.collection("questions");
 
-  console.log("MongoDB connected");
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection failed:", error);
+    process.exit(1);
+  }
 }
-const axios = require("axios");
-// Allow overriding where data lives (Render Disk mounts at /var/data, for example)
-const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+
+// =====================================================
+// DATA DIRECTORIES
+// =====================================================
+
+const DATA_DIR =
+  process.env.DATA_DIR || path.join(__dirname, "data");
+
 console.log("DATA_DIR:", DATA_DIR);
-const SUBMISSIONS_DIR = path.join(DATA_DIR, "submissions");
-const CONFIG_FILE = path.join(DATA_DIR, "config.json");
-const QUESTIONS_FILE = path.join(DATA_DIR, "questions.json");
-const PARTICIPANTS_FILE = path.join(DATA_DIR, "participants.json");
 
-const ADMIN_USER = process.env.ADMIN_USER || "admin";
-const ADMIN_PASS = process.env.ADMIN_PASS ||"admin@123";
+const SUBMISSIONS_DIR =
+  path.join(DATA_DIR, "submissions");
 
+const CONFIG_FILE =
+  path.join(DATA_DIR, "config.json");
 
-app.use(express.json({ limit: "2mb" }));
-const cors=require("cors");
+const QUESTIONS_FILE =
+  path.join(DATA_DIR, "questions.json");
+
+const PARTICIPANTS_FILE =
+  path.join(DATA_DIR, "participants.json");
+
+// =====================================================
+// ADMIN CREDENTIALS
+// =====================================================
+
+const ADMIN_USER =
+  process.env.ADMIN_USER || "admin";
+
+const ADMIN_PASS =
+  process.env.ADMIN_PASS || "admin@123";
+
+// =====================================================
+// MIDDLEWARE
+// =====================================================
+
+app.use(express.json({
+  limit: "2mb"
+}));
 
 app.use(cors());
 
-app.use(express.json({ limit:"2mb" }));
-app.use(express.static(path.join(__dirname,"public")));
+app.use(express.static(
+  path.join(__dirname, "public")
+));
+
+
 
 
 /* =======================================================================
@@ -279,18 +320,30 @@ app.post("/api/login", (req, res) => {
    ======================================================================= */
 
 // Questions WITHOUT any admin-only fields; participants get what they need to answer.
-app.get("/api/questions", auth, (req, res) => {
-  const questions = getQuestions().map((q, i) => ({
-    id: q.id,
-    number: i + 1,
-    type: q.type,
-    title: q.title,
-    marks: q.marks,
-    language: q.language,
-    description: q.description,
-    starterCode: q.type === "debugging" ? q.starterCode || "" : "",
-  }));
-  res.json({ questions });
+app.get("/api/questions", auth, async (req, res) => {
+  try {
+    const questions = await getQuestions();
+
+    const safeQuestions = questions.map((q, i) => ({
+      id: q.id,
+      number: i + 1,
+      type: q.type,
+      title: q.title,
+      marks: q.marks,
+      language: q.language,
+      description: q.description,
+      starterCode: q.type === "debugging"
+        ? q.starterCode || ""
+        : ""
+    }));
+
+    res.json({ questions: safeQuestions });
+  } catch (error) {
+    console.error("Failed to load questions:", error);
+    res.status(500).json({
+      error: "Failed to load questions"
+    });
+  }
 });
 
 // Record a tab-switch violation server-side (can't be reset by refreshing)
@@ -302,34 +355,68 @@ app.post("/api/violation", auth, (req, res) => {
 });
 
 // Submit answers. One submission file per participant (latest overwrites).
-app.post("/api/submit", auth, (req, res) => {
-  const { answers, autoSubmitted } = req.body || {};
-  if (!Array.isArray(answers))
-    return res.status(400).json({ error: "answers array required" });
+app.post("/api/submit", auth, async (req, res) => {
+  try {
+    const { answers, autoSubmitted } = req.body || {};
 
-  const questions = getQuestions();
-  const submission = {
-    username: req.session.username,
-    submittedAt: new Date().toISOString(),
-    autoSubmitted: !!autoSubmitted,
-    violations: req.session.violations || 0,
-    answers: answers.map((a) => ({
-      id: a.id,
-      status: a.status,
-      answer: String(a.answer || "").slice(0, 100000),
-    })),
-    // Scoring is filled in by the admin later
-    scores: {}, // { questionId: marksAwarded }
-    remarks: "",
-    totalScore: null,
-    maxScore: questions.reduce((s, q) => s + (Number(q.marks) || 0), 0),
-  };
+    if (!Array.isArray(answers)) {
+      return res.status(400).json({
+        error: "answers array required"
+      });
+    }
 
-  const safeName = req.session.username.replace(/[^a-z0-9_-]/gi, "_");
-  writeJSON(path.join(SUBMISSIONS_DIR, `${safeName}.json`), submission);
+    const questions = await getQuestions();
 
-  const attended = submission.answers.filter((a) => a.status === "answered").length;
-  res.json({ ok: true, attended, total: questions.length, notAttended: questions.length - attended });
+    const submission = {
+      username: req.session.username,
+      submittedAt: new Date().toISOString(),
+      autoSubmitted: !!autoSubmitted,
+      violations: req.session.violations || 0,
+
+      answers: answers.map((a) => ({
+        id: a.id,
+        status: a.status,
+        answer: String(a.answer || "").slice(0, 100000)
+      })),
+
+      scores: {},
+      remarks: "",
+      totalScore: null,
+
+      maxScore: questions.reduce(
+        (s, q) => s + (Number(q.marks) || 0),
+        0
+      )
+    };
+
+    const safeName = req.session.username.replace(
+      /[^a-z0-9_-]/gi,
+      "_"
+    );
+
+    writeJSON(
+      path.join(SUBMISSIONS_DIR, `${safeName}.json`),
+      submission
+    );
+
+    const attended = submission.answers.filter(
+      (a) => a.status === "answered"
+    ).length;
+
+    res.json({
+      ok: true,
+      attended,
+      total: questions.length,
+      notAttended: questions.length - attended
+    });
+
+  } catch (error) {
+    console.error("Submission failed:", error);
+
+    res.status(500).json({
+      error: "Submission failed"
+    });
+  }
 });
 
 app.post("/api/run", auth, (req, res) => {
@@ -568,60 +655,203 @@ admin.post("/event/:action", (req, res) => {
 });
 
 /* ---- Questions manager (full CRUD) ---- */
-admin.get("/questions", (req, res) => res.json({ questions: getQuestions() }));
+admin.get("/questions", async (req, res) => {
+  try {
+    const questions = await getQuestions();
+
+    res.json({
+      questions
+    });
+
+  } catch (error) {
+    console.error("Failed to load admin questions:", error);
+
+    res.status(500).json({
+      error: "Failed to load questions"
+    });
+  }
+});
 
 admin.post("/questions", async (req, res) => {
-  const { type, title, marks, language, description, starterCode } = req.body || {};
-  if (!title || !description)
-    return res.status(400).json({ error: "Title and description are required" });
-  const questions = await getQuestions();
-  const q = {
-    id: genId(),
-    type: type === "debugging" ? "debugging" : "coding",
-    title: String(title),
-    marks: Math.max(0, Number(marks) || 0),
-    language: String(language || "Any"),
-    description: String(description),
-    starterCode: String(starterCode || ""),
-  };
-  questions.push(q);
-  await setQuestions(questions);
-  res.json(q);
-  createdAt: new Date()
+  try {
+    const {
+      type,
+      title,
+      marks,
+      language,
+      description,
+      starterCode
+    } = req.body || {};
+
+    if (!title || !description) {
+      return res.status(400).json({
+        error: "Title and description are required"
+      });
+    }
+
+    const q = {
+      id: genId(),
+      type: type === "debugging"
+        ? "debugging"
+        : "coding",
+      title: String(title),
+      marks: Math.max(0, Number(marks) || 0),
+      language: String(language || "Any"),
+      description: String(description),
+      starterCode: String(starterCode || ""),
+      createdAt: new Date()
+    };
+
+    await questionsCollection.insertOne(q);
+
+    res.json(q);
+
+  } catch (error) {
+    console.error("Failed to create question:", error);
+
+    res.status(500).json({
+      error: "Failed to create question"
+    });
+  }
 });
 
-admin.put("/questions/:id", (req, res) => {
-  const questions = getQuestions();
-  const q = questions.find((x) => x.id === req.params.id);
-  if (!q) return res.status(404).json({ error: "Question not found" });
-  const { type, title, marks, language, description, starterCode } = req.body || {};
-  if (type !== undefined) q.type = type === "debugging" ? "debugging" : "coding";
-  if (title !== undefined) q.title = String(title);
-  if (marks !== undefined) q.marks = Math.max(0, Number(marks) || 0);
-  if (language !== undefined) q.language = String(language);
-  if (description !== undefined) q.description = String(description);
-  if (starterCode !== undefined) q.starterCode = String(starterCode);
-  setQuestions(questions);
-  res.json(q);
+admin.put("/questions/:id", async (req, res) => {
+  try {
+    const questions = await getQuestions();
+
+    const q = questions.find(
+      (x) => x.id === req.params.id
+    );
+
+    if (!q) {
+      return res.status(404).json({
+        error: "Question not found"
+      });
+    }
+
+    const {
+      type,
+      title,
+      marks,
+      language,
+      description,
+      starterCode
+    } = req.body || {};
+
+    if (type !== undefined) {
+      q.type =
+        type === "debugging"
+          ? "debugging"
+          : "coding";
+    }
+
+    if (title !== undefined) {
+      q.title = String(title);
+    }
+
+    if (marks !== undefined) {
+      q.marks = Math.max(
+        0,
+        Number(marks) || 0
+      );
+    }
+
+    if (language !== undefined) {
+      q.language = String(language);
+    }
+
+    if (description !== undefined) {
+      q.description = String(description);
+    }
+
+    if (starterCode !== undefined) {
+      q.starterCode = String(starterCode);
+    }
+
+    await questionsCollection.replaceOne(
+      { id: q.id },
+      q
+    );
+
+    res.json(q);
+
+  } catch (error) {
+    console.error("Failed to update question:", error);
+
+    res.status(500).json({
+      error: "Failed to update question"
+    });
+  }
 });
 
-admin.delete("/questions/:id", (req, res) => {
-  const questions = getQuestions().filter((x) => x.id !== req.params.id);
-  setQuestions(questions);
-  res.json({ ok: true, count: questions.length });
+admin.delete("/questions/:id", async (req, res) => {
+  try {
+    const result = await questionsCollection.deleteOne({
+      id: req.params.id
+    });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        error: "Question not found"
+      });
+    }
+
+    const count = await questionsCollection.countDocuments();
+
+    res.json({
+      ok: true,
+      count
+    });
+
+  } catch (error) {
+    console.error("Failed to delete question:", error);
+
+    res.status(500).json({
+      error: "Failed to delete question"
+    });
+  }
 });
 
 // Reorder questions given an array of ids in the new order
-admin.post("/questions/reorder", (req, res) => {
-  const { order } = req.body || {};
-  if (!Array.isArray(order)) return res.status(400).json({ error: "order array required" });
-  const questions = getQuestions();
-  const byId = Object.fromEntries(questions.map((q) => [q.id, q]));
-  const reordered = order.map((id) => byId[id]).filter(Boolean);
-  // Keep any not mentioned at the end
-  questions.forEach((q) => { if (!order.includes(q.id)) reordered.push(q); });
-  setQuestions(reordered);
-  res.json({ ok: true });
+admin.post("/questions/reorder", async (req, res) => {
+  try {
+    const { order } = req.body || {};
+
+    if (!Array.isArray(order)) {
+      return res.status(400).json({
+        error: "order array required"
+      });
+    }
+
+    const questions = await getQuestions();
+
+    const byId = Object.fromEntries(
+      questions.map((q) => [q.id, q])
+    );
+
+    const reordered = order
+      .map((id) => byId[id])
+      .filter(Boolean);
+
+    questions.forEach((q) => {
+      if (!order.includes(q.id)) {
+        reordered.push(q);
+      }
+    });
+
+    await setQuestions(reordered);
+
+    res.json({
+      ok: true
+    });
+
+  } catch (error) {
+    console.error("Failed to reorder questions:", error);
+
+    res.status(500).json({
+      error: "Failed to reorder questions"
+    });
+  }
 });
 
 /* ---- Participants manager ---- */
@@ -683,13 +913,29 @@ function loadSubmissions() {
     .filter(Boolean);
 }
 
-admin.get("/submissions", (req, res) => {
-  const questions = getQuestions();
-  const subs = loadSubmissions().map((s) => ({
-    ...s,
-    answeredCount: s.answers.filter((a) => a.status === "answered").length,
-  }));
-  res.json({ submissions: subs, questions });
+admin.get("/submissions", async (req, res) => {
+  try {
+    const questions = await getQuestions();
+
+    const subs = loadSubmissions().map((s) => ({
+      ...s,
+      answeredCount: s.answers.filter(
+        (a) => a.status === "answered"
+      ).length
+    }));
+
+    res.json({
+      submissions: subs,
+      questions
+    });
+
+  } catch (error) {
+    console.error("Failed to load submissions:", error);
+
+    res.status(500).json({
+      error: "Failed to load submissions"
+    });
+  }
 });
 
 // Save marks + remarks for one participant
@@ -708,35 +954,74 @@ admin.post("/score/:username", (req, res) => {
 });
 
 // Export all results (with scores) as CSV
-admin.get("/export.csv", (req, res) => {
-  const questions = getQuestions();
-  const subs = loadSubmissions();
-  const header = [
-    "username",
-    "submittedAt",
-    "autoSubmitted",
-    "violations",
-    ...questions.map((q, i) => `Q${i + 1}_marks`),
-    "total",
-    "maxScore",
-    "remarks",
-  ];
-  const rows = subs.map((s) => {
-    const cells = [
-      s.username,
-      s.submittedAt,
-      s.autoSubmitted ? "yes" : "no",
-      s.violations,
-      ...questions.map((q) => (s.scores && s.scores[q.id] != null ? s.scores[q.id] : "")),
-      s.totalScore != null ? s.totalScore : "",
-      s.maxScore != null ? s.maxScore : "",
-      `"${String(s.remarks || "").replace(/"/g, '""')}"`,
+admin.get("/export.csv", async (req, res) => {
+  try {
+    const questions = await getQuestions();
+    const subs = loadSubmissions();
+
+    const header = [
+      "username",
+      "submittedAt",
+      "autoSubmitted",
+      "violations",
+      ...questions.map(
+        (q, i) => `Q${i + 1}_marks`
+      ),
+      "total",
+      "maxScore",
+      "remarks"
     ];
-    return cells.join(",");
-  });
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", "attachment; filename=results.csv");
-  res.send([header.join(","), ...rows].join("\n"));
+
+    const rows = subs.map((s) => {
+      const cells = [
+        s.username,
+        s.submittedAt,
+        s.autoSubmitted ? "yes" : "no",
+        s.violations,
+
+        ...questions.map((q) =>
+          s.scores &&
+          s.scores[q.id] != null
+            ? s.scores[q.id]
+            : ""
+        ),
+
+        s.totalScore != null
+          ? s.totalScore
+          : "",
+
+        s.maxScore != null
+          ? s.maxScore
+          : "",
+
+        `"${String(s.remarks || "")
+          .replace(/"/g, '""')}"`
+      ];
+
+      return cells.join(",");
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "text/csv"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=results.csv"
+    );
+
+    res.send(
+      [header.join(","), ...rows].join("\n")
+    );
+
+  } catch (error) {
+    console.error("CSV export failed:", error);
+
+    res.status(500).json({
+      error: "CSV export failed"
+    });
+  }
 });
 
 /* =======================================================================
@@ -761,17 +1046,22 @@ app.get("/health", (req, res) => {
 
 
 // Start server ONLY ONCE
-app.listen(PORT, () => {
-
-    console.log(
+connectMongoDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(
         `Coding & Debugging Event Platform running on port ${PORT}`
-    );
+      );
 
-    console.log("Participant page : /");
-    console.log("Admin panel      : /admin");
-
-});
-
+      console.log("Participant page : /");
+      console.log("Admin panel      : /admin");
+      console.log("Health check     : /health");
+    });
+  })
+  .catch((error) => {
+    console.error("Server startup failed:", error);
+    process.exit(1);
+  });
 
 
 
